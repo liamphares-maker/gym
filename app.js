@@ -46,6 +46,15 @@ makeLibrary(data);
 delete data.restFor; // per-exercise rest times from older versions; every rest now starts at the default
 data.bmi ||= {}; // { h: cm, kg } for the BMI calculator on Body, separate from the weigh-ins
 data.names ||= {}; // { exerciseId: name } for every exercise with logged sets, so History still shows it after it's removed from a workout
+// Sets only count (History, last time, the Settings count) once their exercise is ticked on Today. Logs from before
+// this rule (no tickOnly flag) are marked ticked, so old history stays.
+const kept = (d, id) => !!data.done[d]?.includes(id);
+function tickOld(d) {
+  if (d.tickOnly) return;
+  for (const day in d.logs) if (day < today()) d.done[day] = [...new Set([...d.done[day] || [], ...Object.keys(d.logs[day])])];
+  d.tickOnly = 1;
+}
+tickOld(data);
 // Settings: data.restDefault (seconds, default 90), data.beep (false = silent), data.haptics (false = off), data.lastBackup (date of the last export).
 const save = () => localStorage.setItem(KEY, JSON.stringify(data));
 save(); // keeps the library (and its ids) from the first run
@@ -70,7 +79,7 @@ let libView = false, libEdit = null, libQ = ''; // Plan â€º View exercises, the 
 
 function lastTime(id) {
   const t = today();
-  const d = Object.keys(data.logs).filter(k => k < t && data.logs[k][id]?.some(x => x?.r)).sort().pop();
+  const d = Object.keys(data.logs).filter(k => k < t && kept(k, id) && data.logs[k][id]?.some(x => x?.r)).sort().pop();
   return d && { date: d, sets: data.logs[d][id].filter(x => x?.r) };
 }
 
@@ -317,7 +326,7 @@ function historyHTML() {
   hist = cur.name;
   const opts = [...Object.keys(PRESETS), 'Other'].map(c => [c, all.filter(x => x.cat === c)]).filter(([, l]) => l.length).map(([c, l]) =>
     `<optgroup label="${c}">${l.map(x => `<option value="${esc(x.name)}"${x === cur ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup>`).join('');
-  const rows = Object.keys(data.logs).sort().map(d => [d, cur.ids.flatMap(id => data.logs[d][id] || []).filter(x => x?.r)]).filter(([, s]) => s.length);
+  const rows = Object.keys(data.logs).sort().map(d => [d, cur.ids.flatMap(id => kept(d, id) && data.logs[d][id] || []).filter(x => x?.r)]).filter(([, s]) => s.length);
   const pts = rows.map(([d, s]) => [d, Math.max(...s.map(x => +x.w || 0))]);
   histIds = cur.ids;
   return `<h1>History</h1><select id="hist">${opts}</select>${rangeChips(histRange, 'histrange')}${chart(pts, null, RANGES[histRange])}<p class="muted small">Heaviest set each session (kg)</p>` +
@@ -400,7 +409,7 @@ const settingsHTML = () => `<h1>Settings</h1><button id="tutorial" class="big">â
   ${backupAge()}
   <button id="export" class="big">Export backup</button>
   <label class="btn big">Import backup<input type="file" id="import" accept="application/json,.json" hidden></label>
-  <p class="muted small">${Object.keys(data.logs).length} training days and ${data.weights.length} weigh-ins saved.</p>`;
+  <p class="muted small">${Object.keys(data.logs).filter(d => Object.keys(data.logs[d]).some(id => kept(d, id))).length} training days and ${data.weights.length} weigh-ins saved.</p>`;
 
 // Least-squares line through [date, y] points (sorted). Returns [y at first date, slope per day].
 function fit(pts) {
@@ -540,7 +549,7 @@ async function importData(file) {
     if (!d || typeof d.logs !== 'object' || Array.isArray(d.logs) || !Array.isArray(d.weights)) throw 0;
     if (!await ask('Are you sure you want to replace everything on this phone with this backup?', 'Everything here now is deleted.', 'Replace')) return;
     if (!Array.isArray(d.workouts)) d.workouts = data.workouts;
-    d.done ||= {}; delete d.restFor; d.rows ||= {}; d.bmi ||= {}; d.names ||= {};
+    d.done ||= {}; delete d.restFor; d.rows ||= {}; d.bmi ||= {}; d.names ||= {}; tickOld(d);
     makeLibrary(d);
     data = d; save(); rebuild(); render();
   } catch { alert("That file isn't a gym backup."); }
