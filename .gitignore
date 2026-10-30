@@ -1,0 +1,10 @@
+# Allow-list: only the app's own files are ever uploaded. Everything else (e.g. .netlify/) is ignored.
+*
+!.gitignore
+!index.html
+!app.js
+!programme.js
+!sw.js
+!manifest.webmanifest
+!icon-180.png
+!icon-512.png

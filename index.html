@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1012">
+<meta name="robots" content="noindex"><!-- public but unlisted: keep it out of search engines -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gym">
+<title>Gym</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root { --bg: #0f1012; --card: #1a1c20; --line: #2a2d33; --text: #ececee; --muted: #8b9099; --accent: #ff7a1a; --good: #3ecf8e; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.4 -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent;
+  padding: calc(env(safe-area-inset-top) + 4px) 16px calc(160px + env(safe-area-inset-bottom));
+  /* iOS 26 Home Screen apps get the screen height wrong on pages too short to scroll, and the tab bar floats up by about
+     the status bar's height. Every page is kept just taller than the screen so iOS always uses the right height. */
+  min-height: calc(100vh + env(safe-area-inset-top) + 1px); box-sizing: border-box; }
+h1 { font-size: 22px; margin: 12px 0; }
+button, input, select { font: inherit; color: inherit; }
+button, .btn { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; min-height: 52px; cursor: pointer; }
+/* Pressed: anything tappable darkens under your finger and eases back on release. */
+button, .btn { transition: filter .15s; }
+button:not(:disabled):active, .btn:active { filter: brightness(.65); transition: none; }
+/* Exercise cards: the tap area inside is see-through, so darken the whole card instead of just its text. */
+.ex { transition: filter .15s; }
+.ex:has(> .ex-row > .ex-head:active) { filter: brightness(.65); transition: none; }
+.ex .ex-head:active { filter: none; }
+/* Week rows sit inside one box, so each row gets its own dark band. */
+.week .day:active { background: rgba(0, 0, 0, .35); }
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.top h1 { margin: 12px 0 0; }
+.top p { margin: 2px 0 10px; }
+#weekbtn { display: flex; gap: 6px; align-items: center; flex: none; }
+#weekbtn.on { border-color: var(--accent); color: var(--accent); }
+.week { background: var(--card); border-radius: 14px; padding: 0 14px; margin-bottom: 12px; }
+.day { width: 100%; display: grid; grid-template-columns: 64px 1fr auto; align-items: center; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+.day small { display: block; font-size: 12px; color: var(--muted); font-weight: 400; }
+.day:last-child { border-bottom: 0; }
+.day.today span:first-child { color: var(--accent); font-weight: 700; }
+.day.today { background: color-mix(in srgb, var(--accent) 16%, transparent); border-radius: 10px; border-bottom-color: transparent; } /* today's whole row is tinted */
+.day.on b { color: var(--accent); }
+.chip { border-radius: 999px; padding: 8px 12px; min-height: 44px; font-size: 15px; white-space: nowrap; }
+.chip.on { background: var(--accent); border-color: var(--accent); color: #111; font-weight: 600; }
+.days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.days .chip { padding: 8px 0; font-size: 14px; }
+.muscles { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.restday { font-size: 20px; text-align: center; margin: 48px 0; }
+.hero { display: flex; align-items: center; gap: 8px; margin: 0 -16px 8px; padding: 4px 16px 8px; }
+.model { width: 50%; flex: none; }
+.map { display: flex; }
+/* Rest day: head and shoulders. The glow is a blurred copy behind the figure whose opacity pulses, so its colour never shifts.
+   The bottom fades out so the crop has no hard edge. */
+/* 40px of padding round the figure gives the glow room, so the fade-out mask doesn't cut it off in a hard line. */
+.bust { position: relative; width: calc(75% + 80px); padding: 40px 40px 0; margin: -16px auto 0; -webkit-mask-image: linear-gradient(#000 75%, transparent); mask-image: linear-gradient(#000 75%, transparent); }
+.bust svg { display: block; width: 100%; overflow: visible; position: relative; }
+.bust svg:first-child { position: absolute; inset: 40px 40px 0; width: calc(100% - 80px); filter: drop-shadow(0 0 6px var(--accent)) drop-shadow(0 0 24px var(--accent)); animation: glow 3.5s ease-in-out infinite; will-change: opacity; }
+@keyframes glow { 0%, 100% { opacity: .08; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bust svg:first-child { animation: none; opacity: .7; } }
+.bust + .restday { margin-top: 8px; }
+.map svg { width: 50%; height: auto; display: block; }
+/* Names column is never taller than the model: it scrolls inside, and stays centred when short. */
+.names { flex: 1; align-self: stretch; position: relative; min-width: 0; }
+.names .scroll { position: absolute; inset: 0; overflow-y: auto; display: flex; flex-direction: column; overscroll-behavior: contain; }
+.names .in { margin: auto 0; display: flex; flex-direction: column; gap: 2px; }
+.names button { background: none; border: 0; text-align: left; padding: 6px 4px; min-height: 36px; font-size: 14px; line-height: 1.25; border-radius: 8px; }
+.names button.on { color: var(--accent); font-weight: 600; }
+.names button.did { color: var(--muted); text-decoration: line-through; }
+.circle { flex: none; width: 34px; height: 34px; min-height: 0; padding: 0; margin-left: 12px; border-radius: 50%; border: 2px solid #4a4f58; background: none; color: transparent; display: grid; place-items: center; }
+.did .circle { background: var(--good); border-color: var(--good); color: #111; }
+.did .ex-head span:first-child { color: var(--muted); text-decoration: line-through; }
+.sil, .m > * { fill: #253041; }
+.out, .m > * { stroke: #6f86a3; stroke-width: 1.6; stroke-linejoin: round; }
+.out { fill: none; }
+.m.on > * { fill: color-mix(in srgb, var(--accent) 22%, transparent); }
+.m.hot > * { fill: var(--accent); stroke: color-mix(in srgb, var(--accent) 50%, #fff); }
+.m.hot { filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 80%, transparent)); }
+.card { width: 100%; display: flex; flex-direction: column; text-align: left; margin-bottom: 10px; padding: 14px 16px; }
+.lbl { display: block; color: var(--muted); font-size: 14px; margin: 16px 0 6px; }
+.lbl input, .lbl select { display: block; margin: 6px 0 0; color: var(--text); text-align: left; font-size: 17px; min-height: 52px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ex-row { display: flex; align-items: center; gap: 4px; padding-right: 8px; }
+.ex-row .ex-head { flex: 1; }
+.mini { min-height: 40px; min-width: 40px; padding: 0; }
+.mini:disabled { opacity: .3; }
+.danger { color: #ff6b6b; }
+/* Sub-page titles: same size and position as every other page title; tap to go back. */
+.back { display: flex; align-items: center; gap: 8px; max-width: 100%; background: none; border: 0; border-radius: 0; padding: 8px 0; margin: 4px 0; min-height: 0;
+  font-size: 22px; font-weight: 700; line-height: 1.4; text-align: left; }
+.back::before { content: '‹'; color: var(--accent); }
+.sub { margin: -10px 0 12px; }
+.ex { background: var(--card); border-radius: 14px; margin-bottom: 10px; overflow: hidden; }
+.ex-head { width: 100%; border: 0; background: none; text-align: left; display: flex; flex-direction: column; padding: 14px 16px; position: relative; }
+.ex-head span:first-child { font-weight: 600; }
+.ex-body { padding: 0 16px 14px; }
+.ex-body p { margin: 0 0 10px; }
+.up { color: var(--good); font-weight: 600; }
+.addset { width: 100%; color: var(--accent); }
+.addset:disabled { opacity: .35; }
+.addset.danger { color: #ff6b6b; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pair button { display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+.danger svg { flex: none; }
+.pair.top { margin-top: 16px; }
+.grip { flex: none; width: 44px; height: 44px; display: grid; place-items: center; color: var(--muted); touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+#exlist .ex { transition: transform .15s, filter .15s; }
+#exlist .ex.dragging { transition: none; position: relative; z-index: 2; box-shadow: 0 8px 24px rgba(0, 0, 0, .6); outline: 1px solid var(--accent); }
+.big.del { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 24px; }
+.cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+.card:disabled { opacity: .45; }
+.wrow { display: flex; align-items: stretch; gap: 10px; margin-bottom: 10px; overflow: hidden; }
+.wrow .mini { flex: none; width: 74px; overflow: hidden; }
+.wrow .mini svg { width: 28px; height: 28px; }
+.wrow .card, .wrow .ex { margin: 0; flex: 1; min-width: 0; }
+/* Trash boxes grow in from the right when Remove is tapped, pushing the cards aside, and shrink away on Done. */
+@keyframes trashin { from { width: 0; min-width: 0; margin-left: -10px; opacity: 0; transform: translateX(40px); } }
+@keyframes trashout { to { width: 0; min-width: 0; margin-left: -10px; opacity: 0; transform: translateX(40px); } }
+.slidein .wrow > .mini { animation: trashin .25s ease-out; }
+.slideout .wrow > .mini { animation: trashout .25s cubic-bezier(.4, 0, .2, 1) forwards; } /* eases in and out, so the cards settle instead of stopping dead */
+@media (prefers-reduced-motion: reduce) { .slidein .wrow > .mini, .slideout .wrow > .mini { animation: none; } }
+.card.wk { flex-direction: row; align-items: center; gap: 10px; }
+.card.wk .info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.card.wk .info > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* one line each, so every card is the same height as the square trash box */
+.belt { flex: none; width: 50%; overflow: hidden; -webkit-mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent); }
+.track { display: flex; width: max-content; animation: belt linear infinite; }
+.track span { flex: none; margin-right: 20px; }
+.track svg { display: block; width: 44px; height: 44px; }
+@keyframes belt { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) { .track { animation: none; } }
+.set { display: grid; grid-template-columns: 20px 1fr 1fr; gap: 10px; align-items: center; margin-bottom: 10px; }
+input { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; min-height: 52px; font-size: 20px; width: 100%; text-align: center; }
+input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+#timer { position: fixed; left: 0; right: 0; bottom: calc(69px + env(safe-area-inset-bottom)); background: #15171a; border-top: 1px solid var(--line);
+  display: flex; align-items: center; gap: 8px; padding: 10px 16px; }
+#timer[hidden] { display: none; }
+#clock { font-size: 32px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.tc { flex: 1; text-align: center; }
+.adj { flex: none; width: 52px; padding: 0; font-size: 26px; line-height: 1; }
+#go { background: var(--accent); color: #111; font-weight: 700; border: 0; min-width: 110px; margin-left: 4px; }
+#timer.ready #clock { color: var(--good); }
+/* Tab bar: each tab is a box like the rest of the app; the current one is outlined in the theme colour. */
+nav { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 6px; background: #0b0c0e; border-top: 1px solid var(--line);
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); }
+nav button { flex: 1; min-width: 0; min-height: 52px; padding: 0 2px; color: var(--muted); font-size: 14px; }
+nav button.on { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+select { width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; min-height: 52px; margin-bottom: 12px; }
+.chart { width: 100%; display: block; margin-bottom: 4px; }
+.chart polyline { fill: none; stroke: var(--accent); stroke-width: 2.5; }
+.chart circle { fill: var(--accent); }
+.chart text { fill: var(--muted); font-size: 11px; }
+.chart .grid { stroke: var(--line); }
+.chart .trend { stroke: var(--good); stroke-dasharray: 5 4; stroke-width: 2; }
+/* Bodyweight period buttons, and the chart that scrolls sideways under kg labels pinned on the left. */
+.ranges { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 10px; }
+.ranges .chip { padding: 8px 0; }
+.chartwrap { position: relative; }
+.chartscroll { overflow-x: auto; scrollbar-width: none; }
+.chartscroll::-webkit-scrollbar { display: none; }
+.chart.yaxis { position: absolute; left: 0; top: 0; background: var(--bg); }
+.empty { text-align: center; padding: 32px 0; }
+.row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); gap: 12px; }
+/* A long list scrolls inside its own box (about 5½ rows, so the cut-off row shows there's more) instead of the page. */
+.rowlist { max-height: 310px; overflow-y: auto; overscroll-behavior: contain; }
+/* Settings: default rest − / +, an on/off switch, and the backup age (red when overdue). */
+.restset { display: flex; align-items: center; gap: 10px; }
+.restset b { font-size: 28px; font-variant-numeric: tabular-nums; }
+.toggle { display: flex; justify-content: space-between; align-items: center; min-height: 52px; margin: 6px 0; }
+.toggle input { appearance: none; -webkit-appearance: none; width: 51px; height: 31px; min-height: 0; padding: 0; margin: 0; border: 0; border-radius: 999px;
+  background: var(--line); position: relative; transition: background .2s; flex: none; }
+.toggle input::before { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.toggle input:checked { background: var(--accent); }
+.toggle input:checked::before { transform: translateX(20px); }
+.overdue { color: #ff6b6b; font-weight: 600; }
+.add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; margin-bottom: 12px; }
+.add input { font-size: 17px; }
+/* Weigh-in and BMI boxes: the coloured unit on the right is a button that switches kg ⇄ lbs (or cm ⇄ ft). */
+.unitbox { position: relative; min-width: 0; }
+.lbl .unitbox { margin-top: 6px; }
+.unitbox input { margin: 0; padding: 10px 46px 10px 8px; text-align: center; }
+.unitbox button { position: absolute; right: 1px; top: 1px; bottom: 1px; min-height: 0; padding: 0 14px; background: var(--accent); border: 0; border-radius: 0 10px 10px 0; color: #111; font-weight: 700; font-size: 17px; }
+.add button { background: var(--accent); color: #111; border: 0; font-weight: 700; }
+.x { min-height: 36px; padding: 4px 12px; margin-left: 8px; display: inline-grid; place-items: center; vertical-align: middle; }
+.gauge { position: relative; display: flex; height: 14px; margin: 16px 0 6px; }
+.gauge i:first-child { border-radius: 7px 0 0 7px; }
+.gauge i:nth-child(4) { border-radius: 0 7px 7px 0; }
+.gauge b { position: absolute; top: -6px; width: 6px; height: 26px; margin-left: -3px; background: var(--text); border-radius: 3px; box-shadow: 0 0 0 2px var(--bg); }
+.ticks { position: relative; height: 20px; margin-bottom: 8px; font-size: 12px; color: var(--muted); }
+.ticks span { position: absolute; transform: translateX(-50%); }
+.swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 10px; }
+.swatches button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0; font-size: 13px; color: var(--muted); }
+.swatches i { width: 30px; height: 30px; border-radius: 50%; }
+.swatches .on { border-color: var(--accent); color: var(--text); font-weight: 600; }
+.hue { -webkit-appearance: none; appearance: none; height: 28px; min-height: 0; padding: 0; margin: 8px 0 4px; border: 0; border-radius: 14px;
+  background: linear-gradient(to right, hsl(0 100% 60%), hsl(60 100% 60%), hsl(120 100% 60%), hsl(180 100% 60%), hsl(240 100% 60%), hsl(300 100% 60%), hsl(360 100% 60%)); }
+.hue::-webkit-slider-thumb { -webkit-appearance: none; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
+.hue::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; }
+.hue:focus { outline: none; }
+#ask { width: min(340px, calc(100% - 32px)); background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+#ask::backdrop { background: rgba(0, 0, 0, .6); }
+#ask b { display: block; font-size: 18px; line-height: 1.3; }
+#ask p { margin: 6px 0 18px; font-size: 15px; }
+#ask p:empty { margin-top: 0; }
+.worked { margin: 0 0 16px; }
+.big.save { background: var(--accent); border-color: var(--accent); color: #111; }
+#libq { text-align: left; font-size: 17px; margin-bottom: 10px; }
+#fig3d { margin: 6px 0 8px; }
+#fig3d canvas { display: block; touch-action: pan-y; }
+.big { display: block; width: 100%; text-align: center; margin-bottom: 10px; font-weight: 600; }
+</style>
+</head>
+<body>
+<main id="view"></main>
+<dialog id="ask"><form method="dialog"><b></b><p class="muted"></p>
+  <div class="pair"><button value="">Cancel</button><button value="y" class="danger"></button></div></form></dialog>
+<div id="timer" hidden>
+  <button id="minus" class="adj" aria-label="15 seconds less">−</button>
+  <b id="clock" class="tc">0:00</b>
+  <button id="plus" class="adj" aria-label="15 seconds more">+</button>
+  <button id="go">Start rest</button>
+</div>
+<nav>
+  <button data-tab="today">Today</button>
+  <button data-tab="plan">Plan</button>
+  <button data-tab="history">History</button>
+  <button data-tab="body">Body</button>
+  <button data-tab="settings">Settings</button>
+</nav>
+<script src="programme.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
