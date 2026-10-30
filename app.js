@@ -362,10 +362,10 @@ function bodyHTML() {
   const w = [...data.weights].sort((a, b) => a.date < b.date ? -1 : 1);
   const pts = w.map(x => [x.date, +x.kg]), span = RANGES[bwRange];
   const recent = span ? pts.filter(p => D(p[0]) >= D(today()) - span * 864e5) : pts;
-  let h = `<h1>BMI</h1><div class="grid2">
+  let h = `<h1>Body</h1><h2>BMI</h2><div class="grid2">
     <label class="lbl">Height${unitBox('h', 'ft')}</label>
     <label class="lbl">Weight${unitBox('kg', 'lb')}</label></div>${bmiOut()}
-  <h1>Bodyweight</h1><div class="add"><input type="date" id="bwdate" value="${today()}">
+  <h2>Bodyweight</h2><div class="add"><input type="date" id="bwdate" value="${today()}">
     <div class="unitbox"><input id="bwkg" inputmode="decimal"><button id="bwunit" aria-label="Switch kg / lbs">kg</button></div><button id="logbw">Log</button></div>`;
   h += rangeChips(bwRange, 'bwrange');
   if (recent.length > 1) {
@@ -386,7 +386,7 @@ function backupAge() {
 // Theme colours are hues; the slider picks any hue in between.
 const hue = h => `hsl(${h} 100% 60%)`;
 const THEMES = Object.fromEntries(Object.entries({ Orange: 25, Red: 355, Pink: 330, Purple: 265, Blue: 212, Teal: 180, Green: 95, Yellow: 45 }).map(([n, h]) => [n, hue(h)]));
-const settingsHTML = () => `<h1>Settings</h1><button id="tutorial" class="big">▶ Watch tutorial</button><span class="lbl">Theme colour</span>
+const settingsHTML = () => `<h1>Settings</h1><button id="tutorial" class="big">▶ Watch tutorial</button><button id="update" class="big">Check for updates</button><span class="lbl">Theme colour</span>
   <div class="swatches">${Object.entries(THEMES).map(([n, c]) => `<button data-theme="${c}" class="${c === (data.theme || THEMES.Orange) ? 'on' : ''}"><i style="background:${c}"></i>${n}</button>`).join('')}</div>
   <input type="range" id="hue" class="hue" min="0" max="360" value="${(data.theme || '').match(/hsl\((\d+)/)?.[1] ?? 25}" aria-label="Theme colour">
   <label class="toggle"><span>Haptics</span><input type="checkbox" id="hapticson"${data.haptics === false ? '' : ' checked'}></label>
@@ -609,6 +609,44 @@ async function leaveRemove() {
   removing = false; render();
 }
 
+function goTab(t) { tab = t; removing = creating = false; picking = libEdit = null; libView = false; render(); scrollTo(0, 0); }
+
+// Swipe the page left or right to move between tabs. Not while dragging, picking, removing, in a pop-up, or on the
+// sideways-scrolling chart and the colour slider.
+const TABS = ['today', 'plan', 'history', 'body', 'settings'];
+let swipe; // this touch listener also lets iPhone Safari show the pressed (:active) style
+document.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  swipe = e.touches.length === 1 && !drag && !picking && !removing && !e.target.closest('.chartscroll, input[type=range], dialog, nav') ? [t.clientX, t.clientY] : null;
+}, { passive: true });
+document.addEventListener('touchend', e => {
+  if (!swipe) return;
+  const t = e.changedTouches[0], dx = t.clientX - swipe[0], dy = t.clientY - swipe[1], i = TABS.indexOf(tab) + (dx < 0 ? 1 : -1);
+  swipe = null;
+  if (Math.abs(dx) < 70 || Math.abs(dx) < 2 * Math.abs(dy) || !TABS[i]) return;
+  haptic(); goTab(TABS[i]);
+  view.animate([{ transform: `translateX(${Math.sign(dx) * -40}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }], 180);
+}, { passive: true });
+
+// Settings › Check for updates: re-download every cached file, skipping the browser cache. If any changed, reload.
+async function checkUpdate(b) {
+  b.textContent = 'Checking…';
+  try {
+    const c = await caches.open('gym');
+    const changed = await Promise.all((await c.keys()).map(async req => {
+      const r = await fetch(req.url, { cache: 'no-store' });
+      if (!r.ok) throw r;
+      const old = await (await c.match(req)).text(), now = await r.clone().text();
+      await c.put(req, r);
+      return now !== old;
+    }));
+    (await navigator.serviceWorker.getRegistration())?.update();
+    if (changed.includes(true)) { b.textContent = 'Updating…'; return location.reload(); }
+    b.textContent = "You're up to date";
+  } catch { b.textContent = "Couldn't check. Are you online?"; }
+  setTimeout(() => b.isConnected && (b.textContent = 'Check for updates'), 3000);
+}
+
 document.addEventListener('click', async e => {
   // In remove mode, tapping anywhere except a trash box, Done, the pop-up, the tab bar or the timer just ends remove mode.
   if (removing && !e.target.closest('.wrow > .mini, #rmmode, dialog, nav, #timer')) return leaveRemove();
@@ -616,7 +654,8 @@ document.addEventListener('click', async e => {
   if (b) haptic();
   if (!b || b.closest('dialog')) return;
   const ds = b.dataset, w = W(editW), ex = w?.exercises;
-  if (ds.tab) { tab = ds.tab; removing = creating = false; picking = libEdit = null; libView = false; render(); scrollTo(0, 0); }
+  if (ds.tab) goTab(ds.tab);
+  else if (b.id === 'update') checkUpdate(b);
   else if (b.id === 'weekbtn') { showWeek = !showWeek; render(); }
   else if ('pick' in ds) { sel = ds.pick || null; showWeek = removing = false; open = hl = null; render(); }
   else if (ds.hl) { hl = hl === ds.hl ? null : ds.hl; render(); }
@@ -835,8 +874,7 @@ document.addEventListener('change', e => {
   else if (t.id === 'hapticson') { data.haptics = t.checked; save(); haptic(); }
 });
 
-document.addEventListener('touchstart', () => {}, { passive: true });
-document.addEventListener('mousedown', e => { if (e.target.closest('.unitbox button')) e.preventDefault(); }); // tapping kg/lbs keeps the keyboard up // without a touch listener, iPhone Safari never shows the pressed (:active) style
+document.addEventListener('mousedown', e => { if (e.target.closest('.unitbox button')) e.preventDefault(); }); // tapping kg/lbs keeps the keyboard up
 document.addEventListener('visibilitychange', () => { if (end && document.visibilityState === 'visible') { wake(); paintTimer(); } });
 navigator.serviceWorker?.register('sw.js');
 render();
