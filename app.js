@@ -46,7 +46,7 @@ makeLibrary(data);
 delete data.restFor; // per-exercise rest times from older versions; every rest now starts at the default
 data.bmi ||= {}; // { h: cm, kg } for the BMI calculator on Body, separate from the weigh-ins
 data.names ||= {}; // { exerciseId: name } for every exercise with logged sets, so History still shows it after it's removed from a workout
-// Settings: data.restDefault (seconds, default 90), data.beep (false = silent), data.lastBackup (date of the last export).
+// Settings: data.restDefault (seconds, default 90), data.beep (false = silent), data.haptics (false = off), data.lastBackup (date of the last export).
 const save = () => localStorage.setItem(KEY, JSON.stringify(data));
 save(); // keeps the library (and its ids) from the first run
 // A custom exercise keeps its library entry up to date while you edit the exercise it was created as.
@@ -389,6 +389,7 @@ const THEMES = Object.fromEntries(Object.entries({ Orange: 25, Red: 355, Pink: 3
 const settingsHTML = () => `<h1>Settings</h1><button id="tutorial" class="big">▶ Watch tutorial</button><span class="lbl">Theme colour</span>
   <div class="swatches">${Object.entries(THEMES).map(([n, c]) => `<button data-theme="${c}" class="${c === (data.theme || THEMES.Orange) ? 'on' : ''}"><i style="background:${c}"></i>${n}</button>`).join('')}</div>
   <input type="range" id="hue" class="hue" min="0" max="360" value="${(data.theme || '').match(/hsl\((\d+)/)?.[1] ?? 25}" aria-label="Theme colour">
+  <label class="toggle"><span>Haptics</span><input type="checkbox" id="hapticson"${data.haptics === false ? '' : ' checked'}></label>
   <h1>Rest timer</h1><span class="lbl">Default rest</span>
   <div class="restset"><button class="adj" data-restdef="-15" aria-label="15 seconds less">−</button><b class="tc">${mss(restDefault())}</b>
     <button class="adj" data-restdef="15" aria-label="15 seconds more">+</button></div>
@@ -479,7 +480,7 @@ function adjust(d) {
 
 function paintTimer() {
   const left = end ? Math.ceil((end - Date.now()) / 1000) : restLen();
-  if (end && !beeped && left <= 0) { beeped = true; beep(); }
+  if (end && !beeped && left <= 0) { beeped = true; beep(); if (data.haptics !== false) navigator.vibrate?.([200, 100, 200, 100, 200]); }
   $('clock').textContent = left > 0 ? mss(left) : '+' + mss(-left); // past zero it counts the overtime
   $('go').textContent = end ? 'Stop' : 'Start rest';
   timerEl.classList.toggle('ready', !!end && left <= 0);
@@ -495,6 +496,17 @@ function beep() {
     o.connect(g).connect(audio.destination);
     o.start(t); o.stop(t + 0.25);
   }
+}
+
+// Haptics (Settings switch; on unless data.haptics is false). Android has navigator.vibrate. iPhone Safari doesn't,
+// but tapping a hidden iOS 18+ switch control plays the system tick. iOS only allows that during a tap, so call it from tap handlers.
+const hapticSwitch = Object.assign(document.createElement('label'), { ariaHidden: 'true', innerHTML: '<input type="checkbox" switch>' });
+hapticSwitch.style.display = 'none';
+for (const ev of ['click', 'change']) hapticSwitch.addEventListener(ev, e => e.stopPropagation()); // keep its clicks out of the app's handlers
+document.body.append(hapticSwitch);
+function haptic() {
+  if (data.haptics === false) return;
+  if (navigator.vibrate) navigator.vibrate(10); else hapticSwitch.click();
 }
 
 // Records the backup date (in the file too) unless you cancel the share sheet.
@@ -552,7 +564,9 @@ document.addEventListener('pointerdown', e => {
 });
 function dragUpdate() {
   const { cards, from, el, y0, y, h, mids } = drag, dy = y + scrollY - y0, mid = mids[from] + dy;
-  drag.to = cards.filter((c, k) => k !== from && mids[k] < mid).length;
+  const to = cards.filter((c, k) => k !== from && mids[k] < mid).length;
+  if (to !== drag.to) haptic(); // a tick as the card passes each slot
+  drag.to = to;
   el.style.transform = `translateY(${dy}px)`;
   cards.forEach((c, k) => { if (k !== from) c.style.transform = from < k && k <= drag.to ? `translateY(${-h}px)` : drag.to <= k && k < from ? `translateY(${h}px)` : ''; });
 }
@@ -599,6 +613,7 @@ document.addEventListener('click', async e => {
   // In remove mode, tapping anywhere except a trash box, Done, the pop-up, the tab bar or the timer just ends remove mode.
   if (removing && !e.target.closest('.wrow > .mini, #rmmode, dialog, nav, #timer')) return leaveRemove();
   const b = e.target.closest('button');
+  if (b) haptic();
   if (!b || b.closest('dialog')) return;
   const ds = b.dataset, w = W(editW), ex = w?.exercises;
   if (ds.tab) { tab = ds.tab; removing = creating = false; picking = libEdit = null; libView = false; render(); scrollTo(0, 0); }
@@ -817,6 +832,7 @@ document.addEventListener('change', e => {
   else if (t.id === 'hist') { hist = t.value; render(); }
   else if (t.id === 'import') importData(t.files[0]);
   else if (t.id === 'beepon') { data.beep = t.checked; save(); }
+  else if (t.id === 'hapticson') { data.haptics = t.checked; save(); haptic(); }
 });
 
 document.addEventListener('touchstart', () => {}, { passive: true });
