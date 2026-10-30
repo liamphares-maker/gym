@@ -386,7 +386,7 @@ function backupAge() {
 // Theme colours are hues; the slider picks any hue in between.
 const hue = h => `hsl(${h} 100% 60%)`;
 const THEMES = Object.fromEntries(Object.entries({ Orange: 25, Red: 355, Pink: 330, Purple: 265, Blue: 212, Teal: 180, Green: 95, Yellow: 45 }).map(([n, h]) => [n, hue(h)]));
-const settingsHTML = () => `<h1>Settings</h1><span class="lbl">Theme colour</span>
+const settingsHTML = () => `<h1>Settings</h1><button id="tutorial" class="big">▶ Watch tutorial</button><span class="lbl">Theme colour</span>
   <div class="swatches">${Object.entries(THEMES).map(([n, c]) => `<button data-theme="${c}" class="${c === (data.theme || THEMES.Orange) ? 'on' : ''}"><i style="background:${c}"></i>${n}</button>`).join('')}</div>
   <input type="range" id="hue" class="hue" min="0" max="360" value="${(data.theme || '').match(/hsl\((\d+)/)?.[1] ?? 25}" aria-label="Theme colour">
   <h1>Rest timer</h1><span class="lbl">Default rest</span>
@@ -509,6 +509,7 @@ async function exportData() {
 
 // In-app "Are you sure?" box. The browser's own confirm() is silently blocked in some places, which made deletes do nothing.
 // Resolves true only when the red button is tapped; Cancel, Escape or tapping outside the box resolve false.
+$('tut').addEventListener('close', e => e.target.querySelector('video').pause());
 const askBox = $('ask');
 askBox.addEventListener('click', e => { if (e.target === askBox) askBox.close(); });
 const ask = (q, note = '', yes = 'Delete') => new Promise(res => {
@@ -659,6 +660,7 @@ document.addEventListener('click', async e => {
   else if (b.id === 'minus') adjust(-15);
   else if (b.id === 'plus') adjust(15);
   else if (b.id === 'export') exportData();
+  else if (b.id === 'tutorial') { $('tut').showModal(); $('tut').querySelector('video').play().catch(() => {}); }
   else if (b.id === 'bwunit') {
     // Tapping the unit switches kg ⇄ lbs and converts whatever is typed. Weigh-ins are always saved in kg.
     const i = $('bwkg'), v = num(i.value), toLb = b.textContent === 'kg';
