@@ -36,6 +36,14 @@ button:not(:disabled):active, .btn:active { filter: brightness(.65); transition:
 .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .top h1 { margin: 12px 0 0; }
 .top p { margin: 2px 0 10px; }
+/* Each page's top row (title, Week button, back link) stays put while the page scrolls under it.
+   It reaches up under the status bar and out to the screen edges so nothing shows around it. */
+#view > :first-child { position: sticky; top: 0; z-index: 5; background: var(--bg); max-width: none;
+  margin-top: calc(-4px - env(safe-area-inset-top)); margin-left: -16px; margin-right: -16px;
+  padding-top: calc(4px + env(safe-area-inset-top)); padding-left: 16px; padding-right: 16px; }
+#view > h1:first-child, #view > .back:first-child { padding-top: calc(16px + env(safe-area-inset-top)); } /* keeps their old spacing */
+#view > .back:first-child { width: calc(100% + 32px); box-sizing: border-box; margin-bottom: 0; padding-bottom: 8px; } /* a button shrinks to its text, so stretch it to cover the row */
+#view > .back:first-child + .sub { margin-top: 0; } /* .sub tucks up under the back link; the pinned bar would cover it */
 #weekbtn { display: flex; gap: 6px; align-items: center; flex: none; }
 #weekbtn.on { border-color: var(--accent); color: var(--accent); }
 .week { background: var(--card); border-radius: 14px; padding: 0 14px; margin-bottom: 12px; }
@@ -176,13 +184,14 @@ select { width: 100%; background: var(--card); border: 1px solid var(--line); bo
 .toggle input:checked { background: var(--accent); }
 .toggle input:checked::before { transform: translateX(20px); }
 .overdue { color: #ff6b6b; font-weight: 600; }
-.add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; margin-bottom: 12px; }
-.add input { font-size: 17px; }
+.add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; margin-bottom: 12px; }
+.add input { font-size: 17px; min-width: 0; width: 100%; box-sizing: border-box; } /* date box shrinks too, so the weight box keeps its share */
+.add input[type=date] { -webkit-appearance: none; appearance: none; overflow: hidden; } /* iPhone Safari's date box won't shrink otherwise */
 /* Weigh-in and BMI boxes: the coloured unit on the right is a button that switches kg ⇄ lbs (or cm ⇄ ft). */
 .unitbox { position: relative; min-width: 0; }
 .lbl .unitbox { margin-top: 6px; }
-.unitbox input { margin: 0; padding: 10px 46px 10px 8px; text-align: center; }
-.unitbox button { position: absolute; right: 1px; top: 1px; bottom: 1px; min-height: 0; padding: 0 14px; background: var(--accent); border: 0; border-radius: 0 10px 10px 0; color: #111; font-weight: 700; font-size: 17px; }
+.unitbox input { margin: 0; padding: 10px 60px 10px 8px; text-align: center; } /* right padding = tab width + 6, so typing never runs under the tab */
+.unitbox button { position: absolute; right: 1px; top: 1px; bottom: 1px; min-height: 0; width: 54px; min-width: 0; padding: 0; background: var(--accent); border: 0; border-radius: 0 10px 10px 0; color: #111; font-weight: 700; font-size: 17px; }
 .add button { background: var(--accent); color: #111; border: 0; font-weight: 700; }
 .x { min-height: 36px; padding: 4px 12px; margin-left: 8px; display: inline-grid; place-items: center; vertical-align: middle; }
 .gauge { position: relative; display: flex; height: 14px; margin: 16px 0 6px; }
