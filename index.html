@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f1012">
+<meta name="theme-color" content="#090a09">
 <meta name="robots" content="noindex"><!-- public but unlisted: keep it out of search engines -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -12,17 +12,22 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <style>
-:root { --bg: #0f1012; --card: #1a1c20; --line: #2a2d33; --text: #ececee; --muted: #8b9099; --accent: #ff7a1a; --good: #3ecf8e; color-scheme: dark; }
+:root { --bg: #090a09; --card: #141614; --line: #272b27; --text: #f1f3ef; --muted: #8a9188; --accent: hsl(75 100% 60%); --good: #3ecf8e; color-scheme: dark;
+  --edge: rgba(255, 255, 255, .06); /* hairline border on cards */
+  --grad: linear-gradient(100deg, var(--accent), color-mix(in oklch, var(--accent), #12b76a 45%)); /* main buttons: accent fading towards green */ }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.4 -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent;
-  padding: calc(env(safe-area-inset-top) + 4px) 16px calc(160px + env(safe-area-inset-bottom));
+  padding: calc(env(safe-area-inset-top) + 4px) 16px calc(200px + env(safe-area-inset-bottom));
   /* iOS 26 Home Screen apps get the screen height wrong on pages too short to scroll, and the tab bar floats up by about
      the status bar's height. Every page is kept just taller than the screen so iOS always uses the right height. */
   min-height: calc(100vh + env(safe-area-inset-top) + 1px); box-sizing: border-box; }
-h1 { font-size: 22px; margin: 12px 0; }
-h2 { font-size: 18px; margin: 18px 0 10px; }
+/* Soft glow of the theme colour behind the top of every page; fixed, so it stays put while the page scrolls. */
+body::before { content: ''; position: fixed; inset: 0 0 auto; height: 65vh; z-index: -1; pointer-events: none;
+  background: radial-gradient(110% 70% at 15% -10%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 70%); }
+h1 { font-size: 24px; margin: 12px 0; letter-spacing: -.02em; }
+h2 { font-size: 19px; margin: 22px 0 10px; letter-spacing: -.01em; }
 button, input, select { font: inherit; color: inherit; }
-button, .btn { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; min-height: 52px; cursor: pointer; }
+button, .btn { background: var(--card); border: 1px solid var(--edge); border-radius: 18px; padding: 12px 16px; min-height: 52px; cursor: pointer; }
 /* Pressed: anything tappable darkens under your finger and eases back on release. */
 button, .btn { transition: filter .15s; }
 button:not(:disabled):active, .btn:active { filter: brightness(.65); transition: none; }
@@ -30,37 +35,38 @@ button:not(:disabled):active, .btn:active { filter: brightness(.65); transition:
 .ex { transition: filter .15s; }
 .ex:has(> .ex-row > .ex-head:active) { filter: brightness(.65); transition: none; }
 .ex .ex-head:active { filter: none; }
-/* Week rows sit inside one box, so each row gets its own dark band. */
-.week .day:active { background: rgba(0, 0, 0, .35); }
 .muted { color: var(--muted); }
 .small { font-size: 14px; }
 .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.top h1 { margin: 12px 0 0; }
-.top p { margin: 2px 0 10px; }
+.top h1 { margin: 0 0 10px; font-size: 28px; }
+.top p { margin: 14px 0 0; }
 /* Each page's top row (title, Week button, back link) stays put while the page scrolls under it.
    It reaches up under the status bar and out to the screen edges so nothing shows around it. */
-#view > :first-child { position: sticky; top: 0; z-index: 5; background: var(--bg); max-width: none;
+#view > :first-child { position: sticky; top: 0; z-index: 5; max-width: none;
   margin-top: calc(-4px - env(safe-area-inset-top)); margin-left: -16px; margin-right: -16px;
   padding-top: calc(4px + env(safe-area-inset-top)); padding-left: 16px; padding-right: 16px; }
+/* Its frosted backing is a layer that runs a little past the bar and fades out, so there's no hard edge against the glow. */
+#view > :first-child::before { content: ''; position: absolute; inset: 0 0 -28px; z-index: -1; pointer-events: none;
+  background: color-mix(in srgb, var(--bg) 40%, transparent); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 56px), transparent); mask-image: linear-gradient(#000 calc(100% - 56px), transparent); }
 #view > h1:first-child, #view > .back:first-child { padding-top: calc(16px + env(safe-area-inset-top)); } /* keeps their old spacing */
 #view > .back:first-child { width: calc(100% + 32px); box-sizing: border-box; margin-bottom: 0; padding-bottom: 8px; } /* a button shrinks to its text, so stretch it to cover the row */
 #view > .back:first-child + .sub { margin-top: 0; } /* .sub tucks up under the back link; the pinned bar would cover it */
-#weekbtn { display: flex; gap: 6px; align-items: center; flex: none; }
-#weekbtn.on { border-color: var(--accent); color: var(--accent); }
-.week { background: var(--card); border-radius: 14px; padding: 0 14px; margin-bottom: 12px; }
-.day { width: 100%; display: grid; grid-template-columns: 64px 1fr auto; align-items: center; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
-.day small { display: block; font-size: 12px; color: var(--muted); font-weight: 400; }
-.day:last-child { border-bottom: 0; }
-.day.today span:first-child { color: var(--accent); font-weight: 700; }
-.day.today { background: color-mix(in srgb, var(--accent) 16%, transparent); border-radius: 10px; border-bottom-color: transparent; } /* today's whole row is tinted */
-.day.on b { color: var(--accent); }
+/* Week strip on Today: day name over a date circle. Ringed = a training day, lit = the workout showing. */
+.strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin: 0 0 16px; }
+.sd { display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: 0; padding: 4px 0; min-height: 0; color: var(--muted); font-size: 13px; }
+.sd span { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: 16px; color: var(--text); border: 2px solid transparent; }
+.sd.train span { border-color: #363c36; }
+.sd.today small { color: var(--accent); font-weight: 600; }
+.sd.on span { border-color: var(--accent); color: var(--accent); font-weight: 700; box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 35%, transparent); }
 .chip { border-radius: 999px; padding: 8px 12px; min-height: 44px; font-size: 15px; white-space: nowrap; }
-.chip.on { background: var(--accent); border-color: var(--accent); color: #111; font-weight: 600; }
+.chip.on { background: color-mix(in srgb, var(--accent) 12%, var(--card)); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); color: var(--accent); font-weight: 600; }
 .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .days .chip { padding: 8px 0; font-size: 14px; }
 .muscles { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 .restday { font-size: 20px; text-align: center; margin: 48px 0; }
-.hero { display: flex; align-items: center; gap: 8px; margin: 0 -16px 8px; padding: 4px 16px 8px; }
+.hero { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 14px 12px; border: 1px solid var(--edge); border-radius: 26px;
+  background: radial-gradient(70% 60% at 25% 45%, color-mix(in srgb, var(--accent) 12%, transparent), transparent), var(--card); }
 .model { width: 50%; flex: none; }
 .map { display: flex; }
 /* Rest day: head and shoulders. The glow is a blurred copy behind the figure whose opacity pulses, so its colour never shifts.
@@ -80,11 +86,11 @@ button:not(:disabled):active, .btn:active { filter: brightness(.65); transition:
 .names button { background: none; border: 0; text-align: left; padding: 6px 4px; min-height: 36px; font-size: 14px; line-height: 1.25; border-radius: 8px; }
 .names button.on { color: var(--accent); font-weight: 600; }
 .names button.did { color: var(--muted); text-decoration: line-through; }
-.circle { flex: none; width: 34px; height: 34px; min-height: 0; padding: 0; margin-left: 12px; border-radius: 50%; border: 2px solid #4a4f58; background: none; color: transparent; display: grid; place-items: center; }
-.did .circle { background: var(--good); border-color: var(--good); color: #111; }
+.circle { flex: none; width: 40px; height: 40px; min-height: 0; padding: 0; margin-left: 12px; border-radius: 50%; border: 2px solid #3a403a; background: none; color: transparent; display: grid; place-items: center; }
+.did .circle { background: var(--grad); border-color: transparent; color: #0a0b0a; }
 .did .ex-head span:first-child { color: var(--muted); text-decoration: line-through; }
-.sil, .m > * { fill: #253041; }
-.out, .m > * { stroke: #6f86a3; stroke-width: 1.6; stroke-linejoin: round; }
+.sil, .m > * { fill: #1b211c; }
+.out, .m > * { stroke: #56645a; stroke-width: 1.6; stroke-linejoin: round; }
 .out { fill: none; }
 .m.on > * { fill: color-mix(in srgb, var(--accent) 22%, transparent); }
 .m.hot > * { fill: var(--accent); stroke: color-mix(in srgb, var(--accent) 50%, #fff); }
@@ -103,7 +109,7 @@ button:not(:disabled):active, .btn:active { filter: brightness(.65); transition:
   font-size: 22px; font-weight: 700; line-height: 1.4; text-align: left; }
 .back::before { content: '‹'; color: var(--accent); }
 .sub { margin: -10px 0 12px; }
-.ex { background: var(--card); border-radius: 14px; margin-bottom: 10px; overflow: hidden; }
+.ex { background: var(--card); border: 1px solid var(--edge); border-radius: 22px; margin-bottom: 10px; overflow: hidden; }
 .ex-head { width: 100%; border: 0; background: none; text-align: left; display: flex; flex-direction: column; padding: 14px 16px; position: relative; }
 .ex-head span:first-child { font-weight: 600; }
 .ex-body { padding: 0 16px 14px; }
@@ -142,25 +148,36 @@ button:not(:disabled):active, .btn:active { filter: brightness(.65); transition:
 @keyframes belt { from { transform: translateX(-50%); } to { transform: translateX(0); } }
 @media (prefers-reduced-motion: reduce) { .track { animation: none; } }
 .set { display: grid; grid-template-columns: 20px 1fr 1fr; gap: 10px; align-items: center; margin-bottom: 10px; }
-input { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; min-height: 52px; font-size: 20px; width: 100%; text-align: center; }
+input { background: #0d0f0d; border: 1px solid var(--line); border-radius: 14px; padding: 10px; min-height: 52px; font-size: 20px; width: 100%; text-align: center; }
 input:focus { outline: 2px solid var(--accent); border-color: transparent; }
-#timer { position: fixed; left: 0; right: 0; bottom: calc(69px + env(safe-area-inset-bottom)); background: #15171a; border-top: 1px solid var(--line);
-  display: flex; align-items: center; gap: 8px; padding: 10px 16px; }
+/* Rest timer: a floating frosted card above the tab bar (clear of the raised History button). */
+#timer { position: fixed; left: 12px; right: 12px; bottom: calc(100px + env(safe-area-inset-bottom)); background: rgba(20, 22, 20, .88);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border: 1px solid var(--edge); border-radius: 26px; box-shadow: 0 12px 32px rgba(0, 0, 0, .5);
+  display: flex; align-items: center; gap: 8px; padding: 10px; }
 #timer[hidden] { display: none; }
 #clock { font-size: 32px; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .tc { flex: 1; text-align: center; }
-.adj { flex: none; width: 52px; padding: 0; font-size: 26px; line-height: 1; }
-#go { background: var(--accent); color: #111; font-weight: 700; border: 0; min-width: 110px; margin-left: 4px; }
+.adj { flex: none; width: 52px; padding: 0; font-size: 26px; line-height: 1; border-radius: 50%; }
+#go { background: var(--grad); color: #0a0b0a; font-weight: 700; border: 0; border-radius: 999px; min-width: 116px; margin-left: 4px; }
 #timer.ready #clock { color: var(--good); }
-/* Tab bar: each tab is a box like the rest of the app; the current one is outlined in the theme colour. */
-nav { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 6px; background: #0b0c0e; border-top: 1px solid var(--line);
-  padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); }
-nav button { flex: 1; min-width: 0; min-height: 52px; padding: 0 2px; color: var(--muted); font-size: 14px; }
-nav button.on { color: var(--accent); border-color: var(--accent); font-weight: 600; }
-select { width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; min-height: 52px; margin-bottom: 12px; }
+/* Tab bar: icon over label, the current tab lit with a dot under it. History is the big round button in the middle. */
+nav { position: fixed; left: 0; right: 0; bottom: 0; display: flex; align-items: center; background: rgba(16, 18, 16, .92);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border-top: 1px solid var(--edge); border-radius: 28px 28px 0 0;
+  padding: 8px 6px calc(6px + env(safe-area-inset-bottom)); }
+nav button { flex: 1; min-width: 0; min-height: 58px; padding: 4px 0 10px; background: none; border: 0; color: var(--muted); font-size: 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+nav button.on { color: var(--accent); font-weight: 600; }
+nav button.on::after { content: ''; position: absolute; bottom: 1px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+nav .fab { flex: none; width: 62px; height: 62px; min-height: 0; padding: 0; margin: 0 4px; border-radius: 50%; justify-content: center; transform: translateY(-24px);
+  background: var(--accent); color: #0a0b0a; box-shadow: 0 0 0 5px var(--bg), 0 8px 26px color-mix(in srgb, var(--accent) 45%, transparent); }
+nav .fab.on { color: #0a0b0a; box-shadow: 0 0 0 5px var(--bg), 0 0 0 7px var(--accent), 0 8px 30px color-mix(in srgb, var(--accent) 60%, transparent); }
+nav .fab.on::after { display: none; }
+select { width: 100%; background: var(--card); border: 1px solid var(--edge); border-radius: 18px; padding: 12px; min-height: 52px; margin-bottom: 12px; }
 .chart { width: 100%; display: block; margin-bottom: 4px; }
-.chart polyline { fill: none; stroke: var(--accent); stroke-width: 2.5; }
-.chart circle { fill: var(--accent); }
+/* Charts sit on a card; the pinned kg labels share its colour so they cover the scrolling chart cleanly. */
+#view > svg.chart, .chartwrap { background: var(--card); border: 1px solid var(--edge); border-radius: 22px; overflow: hidden; margin-bottom: 6px; }
+.chart polyline { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+.chart circle { fill: var(--card); stroke: var(--accent); stroke-width: 2; }
 .chart text { fill: var(--muted); font-size: 11px; }
 .chart .grid { stroke: var(--line); }
 .chart .trend { stroke: var(--good); stroke-dasharray: 5 4; stroke-width: 2; }
@@ -170,7 +187,7 @@ select { width: 100%; background: var(--card); border: 1px solid var(--line); bo
 .chartwrap { position: relative; }
 .chartscroll { overflow-x: auto; scrollbar-width: none; }
 .chartscroll::-webkit-scrollbar { display: none; }
-.chart.yaxis { position: absolute; left: 0; top: 0; background: var(--bg); }
+.chart.yaxis { position: absolute; left: 0; top: 0; background: var(--card); }
 .empty { text-align: center; padding: 32px 0; }
 .row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); gap: 12px; }
 /* A long list scrolls inside its own box (about 5½ rows, so the cut-off row shows there's more) instead of the page. */
@@ -192,8 +209,8 @@ select { width: 100%; background: var(--card); border: 1px solid var(--line); bo
 .unitbox { position: relative; min-width: 0; }
 .lbl .unitbox { margin-top: 6px; }
 .unitbox input { margin: 0; padding: 10px 60px 10px 8px; text-align: center; } /* right padding = tab width + 6, so typing never runs under the tab */
-.unitbox button { position: absolute; right: 1px; top: 1px; bottom: 1px; min-height: 0; width: 54px; min-width: 0; padding: 0; background: var(--accent); border: 0; border-radius: 0 10px 10px 0; color: #111; font-weight: 700; font-size: 17px; }
-.add button { background: var(--accent); color: #111; border: 0; font-weight: 700; }
+.unitbox button { position: absolute; right: 1px; top: 1px; bottom: 1px; min-height: 0; width: 54px; min-width: 0; padding: 0; background: var(--accent); border: 0; border-radius: 0 13px 13px 0; color: #0a0b0a; font-weight: 700; font-size: 17px; }
+.add button { background: var(--grad); color: #0a0b0a; border: 0; border-radius: 999px; font-weight: 700; }
 .x { min-height: 36px; padding: 4px 12px; margin-left: 8px; display: inline-grid; place-items: center; vertical-align: middle; }
 .gauge { position: relative; display: flex; height: 14px; margin: 16px 0 6px; }
 .gauge i:first-child { border-radius: 7px 0 0 7px; }
@@ -210,7 +227,7 @@ select { width: 100%; background: var(--card); border: 1px solid var(--line); bo
 .hue::-webkit-slider-thumb { -webkit-appearance: none; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
 .hue::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; }
 .hue:focus { outline: none; }
-#ask { width: min(340px, calc(100% - 32px)); background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+#ask { width: min(340px, calc(100% - 32px)); background: var(--card); color: var(--text); border: 1px solid var(--edge); border-radius: 26px; padding: 22px; }
 #ask::backdrop { background: rgba(0, 0, 0, .6); }
 #ask b { display: block; font-size: 18px; line-height: 1.3; }
 #ask p { margin: 6px 0 18px; font-size: 15px; }
@@ -223,7 +240,7 @@ select { width: 100%; background: var(--card); border: 1px solid var(--line); bo
 #tut .big { margin: 0; }
 #ask p:empty { margin-top: 0; }
 .worked { margin: 0 0 16px; }
-.big.save { background: var(--accent); border-color: var(--accent); color: #111; }
+.big.save { background: var(--grad); border: 0; border-radius: 999px; color: #0a0b0a; font-weight: 700; }
 #libq { text-align: left; font-size: 17px; margin-bottom: 10px; }
 #fig3d { margin: 6px 0 8px; }
 #fig3d canvas { display: block; touch-action: pan-y; }
@@ -242,11 +259,11 @@ select { width: 100%; background: var(--card); border: 1px solid var(--line); bo
   <button id="go">Start rest</button>
 </div>
 <nav>
-  <button data-tab="today">Today</button>
-  <button data-tab="plan">Plan</button>
-  <button data-tab="history">History</button>
-  <button data-tab="body">Body</button>
-  <button data-tab="settings">Settings</button>
+  <button data-tab="today"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/></svg>Today</button>
+  <button data-tab="plan"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><g transform="rotate(-45 12 12)"><path d="M3 9.5v5M6.5 7v10M17.5 7v10M21 9.5v5M6.5 12h11"/></g></svg>Plan</button>
+  <button data-tab="history" class="fab" aria-label="History"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8.5 16v-3M12 16V8M15.5 16v-5"/></svg></button>
+  <button data-tab="body"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="4.5" r="2"/><path d="M5 9h14M12 9v5.5M12 14.5 9 21M12 14.5l3 6.5"/></svg>Body</button>
+  <button data-tab="settings"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Settings</button>
 </nav>
 <script src="programme.js"></script>
 <script src="app.js"></script>

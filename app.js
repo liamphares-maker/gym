@@ -72,8 +72,8 @@ const scheduled = d => data.workouts.find(w => w.days.includes(d));
 
 // open: exercise expanded for logging. hl: exercise whose muscles are highlighted on the model.
 let histIds = []; // ids whose sets the History page is showing, for Delete history
-let tab = 'today', sel = scheduled(new Date().getDay())?.id ?? null, open = null, hl = null, hist = null; // hist: exercise name picked on History
-let showWeek = false, editW = null, editEx = null, removing = false;
+let tab = 'today', selDay = new Date().getDay(), sel = scheduled(selDay)?.id ?? null, open = null, hl = null, hist = null; // selDay: the day lit on the week strip (today until you tap another). hist: exercise name picked on History
+let editW = null, editEx = null, removing = false;
 let picking = null, creating = false, cat = Object.keys(PRESETS)[0]; // picking: id of the workout the exercise picker is adding to; creating: + Custom exercise form open
 let libView = false, libEdit = null, libQ = ''; // Plan › View exercises, the library exercise open for editing, and the search text
 
@@ -94,7 +94,7 @@ function suggest(e, last) {
 
 function render() {
   view.classList.remove('slidein', 'slideout');
-  document.documentElement.style.setProperty('--accent', data.theme || THEMES.Orange);
+  document.documentElement.style.setProperty('--accent', data.theme || THEMES.Lime);
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   view.innerHTML = picking ? pickHTML() : { today: todayHTML, plan: planHTML, history: historyHTML, body: bodyHTML, settings: settingsHTML }[tab]();
   timerEl.hidden = !(tab === 'today' && W(sel) && !picking);
@@ -113,15 +113,13 @@ function show3d() {
   if (el) (fig3d ||= import('./figure3d.js')).then(m => m.show(el, data.bmi.h, data.bmi.kg));
 }
 
-const CAL = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
 
 function todayHTML() {
   const w = W(sel);
-  let h = `<div class="top"><div><h1>${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</h1>
-    <p class="muted">${w ? esc(w.name) : 'Rest day'}</p></div><button id="weekbtn"${showWeek ? ' class="on"' : ''}>${CAL} Week</button></div>`;
-  if (showWeek) h += weekHTML();
+  let h = `<div class="top"><div><p class="muted">${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+    <h1>${w ? esc(w.name) : 'Rest day'}</h1></div></div>` + weekHTML();
   const add = '<button class="big" id="addtoday">+ Add exercise</button>';
-  if (!w) return h + `<div class="bust">${figure(FRONT, new Set(), new Set(), '0 -8 200 140').repeat(2)}</div>` + '<p class="restday">Rest day. Eat, sleep, grow.<br><span class="muted small">Training anyway? Add an exercise, or tap Week and pick a workout.</span></p>' + add;
+  if (!w) return h + `<div class="bust">${figure(FRONT, new Set(), new Set(), '0 -8 200 140').repeat(2)}</div>` + '<p class="restday">Rest day. Eat, sleep, grow.<br><span class="muted small">Training anyway? Add an exercise, or tap a training day above.</span></p>' + add;
   if (!w.exercises.length) return h + '<p class="restday muted">No exercises yet.</p>' + add;
   const did = data.done[today()] || [], on = new Set(w.exercises.flatMap(e => e.muscles));
   return h + `<div class="hero"><div class="model">${bodyMap(on, new Set(EX[hl]?.muscles))}</div>
@@ -130,11 +128,12 @@ function todayHTML() {
     `<div class="pair"><button class="big" id="addtoday">+ Add</button><button class="big danger" id="rmmode">${removing ? 'Done' : TRASH + ' Remove'}</button></div>`;
 }
 
+// Week strip: tap a day to show its workout (or rest). This week runs Monday to Sunday.
 function weekHTML() {
-  const now = new Date(), t = now.getDay(); // this week runs Monday to Sunday
-  const row = (d, w) => `<button class="day${d === t ? ' today' : ''}${w && w.id === sel ? ' on' : ''}" data-pick="${w ? w.id : ''}">
-    <span>${DAY[d].slice(0, 3)}<small>${new Date(now.getFullYear(), now.getMonth(), now.getDate() + (d + 6) % 7 - (t + 6) % 7).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</small></span><b>${w ? esc(w.name) : 'Rest'}</b><span class="muted small">${w ? w.exercises.length + ' exercises' : ''}</span></button>`;
-  return `<div class="week">${WEEK.map(d => row(d, scheduled(d))).join('')}</div>`;
+  const now = new Date(), t = now.getDay();
+  const cell = (d, w) => `<button class="sd${d === t ? ' today' : ''}${w ? ' train' : ''}${d === selDay ? ' on' : ''}" data-pick="${w ? w.id : ''}" data-wd="${d}" aria-label="${DAY[d]}: ${w ? esc(w.name) : 'Rest'}">
+    <small>${DAY[d].slice(0, 3)}</small><span>${new Date(now.getFullYear(), now.getMonth(), now.getDate() + (d + 6) % 7 - (t + 6) % 7).getDate()}</span></button>`;
+  return `<div class="strip">${WEEK.map(d => cell(d, scheduled(d))).join('')}</div>`;
 }
 
 // Remove mode: a big trash box beside the card that pushes it aside (slides in, see #view.slidein).
@@ -394,10 +393,10 @@ function backupAge() {
 
 // Theme colours are hues; the slider picks any hue in between.
 const hue = h => `hsl(${h} 100% 60%)`;
-const THEMES = Object.fromEntries(Object.entries({ Orange: 25, Red: 355, Pink: 330, Purple: 265, Blue: 212, Teal: 180, Green: 95, Yellow: 45 }).map(([n, h]) => [n, hue(h)]));
+const THEMES = Object.fromEntries(Object.entries({ Lime: 75, Orange: 25, Red: 355, Pink: 330, Purple: 265, Blue: 212, Teal: 180, Yellow: 45 }).map(([n, h]) => [n, hue(h)]));
 const settingsHTML = () => `<h1>Settings</h1><button id="tutorial" class="big">▶ Watch tutorial</button><button id="update" class="big">Check for updates</button><span class="lbl">Theme colour</span>
-  <div class="swatches">${Object.entries(THEMES).map(([n, c]) => `<button data-theme="${c}" class="${c === (data.theme || THEMES.Orange) ? 'on' : ''}"><i style="background:${c}"></i>${n}</button>`).join('')}</div>
-  <input type="range" id="hue" class="hue" min="0" max="360" value="${(data.theme || '').match(/hsl\((\d+)/)?.[1] ?? 25}" aria-label="Theme colour">
+  <div class="swatches">${Object.entries(THEMES).map(([n, c]) => `<button data-theme="${c}" class="${c === (data.theme || THEMES.Lime) ? 'on' : ''}"><i style="background:${c}"></i>${n}</button>`).join('')}</div>
+  <input type="range" id="hue" class="hue" min="0" max="360" value="${(data.theme || '').match(/hsl\((\d+)/)?.[1] ?? 75}" aria-label="Theme colour">
   <label class="toggle"><span>Haptics</span><input type="checkbox" id="hapticson"${data.haptics === false ? '' : ' checked'}></label>
   <h1>Rest timer</h1><span class="lbl">Default rest</span>
   <div class="restset"><button class="adj" data-restdef="-15" aria-label="15 seconds less">−</button><b class="tc">${mss(restDefault())}</b>
@@ -581,7 +580,7 @@ function dragUpdate() {
 }
 function dragStep() {
   if (!drag) return;
-  const edge = 90, bottom = innerHeight - 160; // keep clear of the timer bar and tabs
+  const edge = 90, bottom = innerHeight - 200; // keep clear of the timer bar and tabs
   if (drag.y < edge) scrollBy(0, -8); else if (drag.y > bottom) scrollBy(0, 8);
   dragUpdate();
   requestAnimationFrame(dragStep);
@@ -665,8 +664,7 @@ document.addEventListener('click', async e => {
   const ds = b.dataset, w = W(editW), ex = w?.exercises;
   if (ds.tab) goTab(ds.tab);
   else if (b.id === 'update') checkUpdate(b);
-  else if (b.id === 'weekbtn') { showWeek = !showWeek; render(); }
-  else if ('pick' in ds) { sel = ds.pick || null; showWeek = removing = false; open = hl = null; render(); }
+  else if ('pick' in ds) { sel = ds.pick || null; selDay = +ds.wd; removing = false; open = hl = null; render(); }
   else if (ds.hl) { hl = hl === ds.hl ? null : ds.hl; render(); }
   else if (ds.open) {
     open = open === ds.open ? null : ds.open;
