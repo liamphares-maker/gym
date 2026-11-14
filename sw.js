@@ -1,7 +1,7 @@
 // Offline: serve from cache instantly, refresh the cache in the background.
 // After you change a file, the update shows on the second launch.
 const CACHE = 'gym';
-const FILES = ['./', 'index.html', 'app.js', 'programme.js', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png'];
+const FILES = ['./', 'index.html', 'app.js', 'programme.js', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png', 'figure3d.js', 'three.module.min.js', 'body.bin', 'muscles.bin'];
 
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));

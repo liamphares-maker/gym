@@ -111,6 +111,8 @@ let fig3d;
 function show3d() {
   const el = $('fig3d');
   if (el) (fig3d ||= import('./figure3d.js')).then(m => m.show(el, data.bmi.h, data.bmi.kg));
+  const m3d = $('m3d'); // Today: the muscle map in 3D, lit for the workout showing and the exercise picked
+  if (m3d) (fig3d ||= import('./figure3d.js')).then(m => m.muscles(m3d, new Set(W(sel).exercises.flatMap(e => e.muscles)), new Set(EX[hl]?.muscles)));
 }
 
 
@@ -122,7 +124,7 @@ function todayHTML() {
   if (!w) return h + `<div class="bust">${figure(FRONT, new Set(), new Set(), '0 -8 200 140').repeat(2)}</div>` + '<p class="restday">Rest day. Eat, sleep, grow.<br><span class="muted small">Training anyway? Add an exercise, or tap a training day above.</span></p>' + add;
   if (!w.exercises.length) return h + '<p class="restday muted">No exercises yet.</p>' + add;
   const did = data.done[today()] || [], on = new Set(w.exercises.flatMap(e => e.muscles));
-  return h + `<div class="hero"><div class="model">${bodyMap(on, new Set(EX[hl]?.muscles))}</div>
+  return h + `<div class="hero"><div class="model" id="m3d">${bodyMap(on, new Set(EX[hl]?.muscles))}</div>
     <div class="names"><div class="scroll"><div class="in">${w.exercises.map(e => `<button class="${e.id === hl ? 'on' : ''}${did.includes(e.id) ? ' did' : ''}" data-hl="${e.id}">${esc(e.name)}</button>`).join('')}</div></div></div></div>` +
     w.exercises.map((e, i) => withTrash(exHTML(EX[e.id], did.includes(e.id), i), removing && `data-rmex="${i}"`, e.name)).join('') +
     `<div class="pair"><button class="big" id="addtoday">+ Add</button><button class="big danger" id="rmmode">${removing ? 'Done' : TRASH + ' Remove'}</button></div>`;
@@ -408,7 +410,8 @@ const settingsHTML = () => `<h1>Settings</h1><button id="tutorial" class="big">�
   ${backupAge()}
   <button id="export" class="big">Export backup</button>
   <label class="btn big">Import backup<input type="file" id="import" accept="application/json,.json" hidden></label>
-  <p class="muted small">${Object.keys(data.logs).filter(d => Object.keys(data.logs[d]).some(id => kept(d, id))).length} training days and ${data.weights.length} weigh-ins saved.</p>`;
+  <p class="muted small">${Object.keys(data.logs).filter(d => Object.keys(data.logs[d]).some(id => kept(d, id))).length} training days and ${data.weights.length} weigh-ins saved.</p>
+  <p class="muted small">3D muscles: Écorché (github.com/Charleeh/ecorche), CC BY-SA 4.0. Based on BodyParts3D, © The Database Center for Life Science, CC BY 4.0, and Z-Anatomy by Gauthier Kervyn, CC BY-SA 4.0.</p>`;
 
 // Least-squares line through [date, y] points (sorted). Returns [y at first date, slope per day].
 function fit(pts) {
@@ -625,7 +628,7 @@ const TABS = ['today', 'plan', 'history', 'body', 'settings'];
 let swipe; // this touch listener also lets iPhone Safari show the pressed (:active) style
 document.addEventListener('touchstart', e => {
   const t = e.touches[0];
-  swipe = e.touches.length === 1 && !drag && !picking && !removing && !e.target.closest('.chartscroll, input[type=range], dialog, nav') ? [t.clientX, t.clientY] : null;
+  swipe = e.touches.length === 1 && !drag && !picking && !removing && !e.target.closest('.chartscroll, input[type=range], dialog, nav, #m3d') ? [t.clientX, t.clientY] : null;
 }, { passive: true });
 document.addEventListener('touchend', e => {
   if (!swipe) return;
