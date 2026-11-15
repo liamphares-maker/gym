@@ -11,13 +11,19 @@
 <title>Gym</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pirata+One&family=UnifrakturMaguntia&display=swap"><!-- Gothic theme -->
 <style>
 :root { --bg: #090a09; --card: #141614; --line: #272b27; --text: #f1f3ef; --muted: #8a9188; --accent: hsl(75 100% 60%); --good: #3ecf8e; color-scheme: dark;
   --edge: rgba(255, 255, 255, .06); /* hairline border on cards */
-  --grad: linear-gradient(100deg, var(--accent), color-mix(in oklch, var(--accent), #12b76a 45%)); /* main buttons: accent fading towards green */ }
+  --grad: linear-gradient(100deg, var(--accent), color-mix(in oklch, var(--accent), #12b76a 45%)); /* main buttons: accent fading towards green */
+  /* Two-tone (Settings) swaps --grad for the two colours and adds --fill, a fade used where the accent is a solid fill. */
+  --m3d: #34403a #59615a #7d877f; /* 3D muscle model: muscle, bone, tendon */ }
 * { box-sizing: border-box; }
+/* Page side margin. Gothic's is wider so cards clear the pillars down the screen edges with a gap. */
+:root { --gut: 16px; }
+:root[data-look=gothic] { --gut: 30px; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.4 -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent;
-  padding: calc(env(safe-area-inset-top) + 4px) 16px calc(200px + env(safe-area-inset-bottom));
+  padding: calc(env(safe-area-inset-top) + 4px) var(--gut) calc(200px + env(safe-area-inset-bottom));
   /* iOS 26 Home Screen apps get the screen height wrong on pages too short to scroll, and the tab bar floats up by about
      the status bar's height. Every page is kept just taller than the screen so iOS always uses the right height. */
   min-height: calc(100vh + env(safe-area-inset-top) + 1px); box-sizing: border-box; }
@@ -38,19 +44,23 @@ button:not(:disabled):active, .btn:active { filter: brightness(.65); transition:
 .muted { color: var(--muted); }
 .small { font-size: 14px; }
 .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.top h1 { margin: 0 0 10px; font-size: 28px; }
-.top p { margin: 14px 0 0; }
+.top h1 { margin: 0 0 10px; }
+/* Every page's title (Today's workout, Workouts, History, Body, Settings, and sub-pages' back links) is the same size. */
+#view > h1:first-child, .top h1, #view > .back:first-child { font-size: 28px; }
+/* Today: the date sits at the far right, level with the workout's name. */
+.top > div { flex: 1; display: flex; flex-direction: row-reverse; justify-content: space-between; align-items: center; gap: 12px; }
+.top > div > p { margin: 0 0 10px; text-align: right; flex: none; white-space: nowrap; } /* one line; a long workout name wraps instead */
 /* Each page's top row (title, Week button, back link) stays put while the page scrolls under it.
    It reaches up under the status bar and out to the screen edges so nothing shows around it. */
 #view > :first-child { position: sticky; top: 0; z-index: 5; max-width: none;
-  margin-top: calc(-4px - env(safe-area-inset-top)); margin-left: -16px; margin-right: -16px;
-  padding-top: calc(4px + env(safe-area-inset-top)); padding-left: 16px; padding-right: 16px; }
+  margin-top: calc(-4px - env(safe-area-inset-top)); margin-left: calc(-1 * var(--gut)); margin-right: calc(-1 * var(--gut));
+  padding-top: calc(4px + env(safe-area-inset-top)); padding-left: var(--gut); padding-right: var(--gut); }
 /* Its frosted backing is a layer that runs a little past the bar and fades out, so there's no hard edge against the glow. */
 #view > :first-child::before { content: ''; position: absolute; inset: 0 0 -28px; z-index: -1; pointer-events: none;
   background: color-mix(in srgb, var(--bg) 40%, transparent); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
   -webkit-mask-image: linear-gradient(#000 calc(100% - 56px), transparent); mask-image: linear-gradient(#000 calc(100% - 56px), transparent); }
-#view > h1:first-child, #view > .back:first-child { padding-top: calc(16px + env(safe-area-inset-top)); } /* keeps their old spacing */
-#view > .back:first-child { width: calc(100% + 32px); box-sizing: border-box; margin-bottom: 0; padding-bottom: 8px; } /* a button shrinks to its text, so stretch it to cover the row */
+#view > h1:first-child, #view > .back:first-child, #view > .top:first-child { padding-top: calc(16px + env(safe-area-inset-top)); } /* keeps their old spacing; every page's title at the same height */
+#view > .back:first-child { width: calc(100% + 2 * var(--gut)); box-sizing: border-box; margin-bottom: 0; padding-bottom: 8px; } /* a button shrinks to its text, so stretch it to cover the row */
 #view > .back:first-child + .sub { margin-top: 0; } /* .sub tucks up under the back link; the pinned bar would cover it */
 /* Week strip on Today: day name over a date circle. Ringed = a training day, lit = the workout showing. */
 .strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin: 0 0 16px; }
@@ -69,15 +79,9 @@ button:not(:disabled):active, .btn:active { filter: brightness(.65); transition:
   background: radial-gradient(70% 60% at 25% 45%, color-mix(in srgb, var(--accent) 12%, transparent), transparent), var(--card); }
 .model { width: 50%; flex: none; }
 .map { display: flex; }
-/* Rest day: head and shoulders. The glow is a blurred copy behind the figure whose opacity pulses, so its colour never shifts.
-   The bottom fades out so the crop has no hard edge. */
-/* 40px of padding round the figure gives the glow room, so the fade-out mask doesn't cut it off in a hard line. */
-.bust { position: relative; width: calc(75% + 80px); padding: 40px 40px 0; margin: -16px auto 0; -webkit-mask-image: linear-gradient(#000 75%, transparent); mask-image: linear-gradient(#000 75%, transparent); }
-.bust svg { display: block; width: 100%; overflow: visible; position: relative; }
-.bust svg:first-child { position: absolute; inset: 40px 40px 0; width: calc(100% - 80px); filter: drop-shadow(0 0 6px var(--accent)) drop-shadow(0 0 24px var(--accent)); animation: glow 3.5s ease-in-out infinite; will-change: opacity; }
-@keyframes glow { 0%, 100% { opacity: .08; } 50% { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .bust svg:first-child { animation: none; opacity: .7; } }
-.bust + .restday { margin-top: 8px; }
+/* Original rest day: the 3D muscle model spinning on its own, a soft glow of the theme colour behind it. */
+.restmodel { margin: -8px 0 0; background: radial-gradient(45% 50% at 50% 50%, color-mix(in srgb, var(--accent) 22%, transparent), transparent); }
+.restmodel canvas { display: block; }
 .map svg { width: 50%; height: auto; display: block; }
 /* Names column is never taller than the model: it scrolls inside, and stays centred when short. */
 .names { flex: 1; align-self: stretch; position: relative; min-width: 0; }
@@ -144,7 +148,8 @@ button:not(:disabled):active, .btn:active { filter: brightness(.65); transition:
 .belt { flex: none; width: 50%; overflow: hidden; -webkit-mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent); }
 .track { display: flex; width: max-content; animation: belt linear infinite; }
 .track span { flex: none; margin-right: 20px; }
-.track svg { display: block; width: 44px; height: 44px; }
+.track :is(svg, img) { display: block; width: 44px; height: 44px; }
+.track img { -webkit-mask-image: radial-gradient(closest-side, #000 65%, transparent); mask-image: radial-gradient(closest-side, #000 65%, transparent); } /* 3D crops fade out instead of ending square */
 @keyframes belt { from { transform: translateX(-50%); } to { transform: translateX(0); } }
 @media (prefers-reduced-motion: reduce) { .track { animation: none; } }
 .set { display: grid; grid-template-columns: 20px 1fr 1fr; gap: 10px; align-items: center; margin-bottom: 10px; }
@@ -169,7 +174,7 @@ nav button { flex: 1; min-width: 0; min-height: 58px; padding: 4px 0 10px; backg
 nav button.on { color: var(--accent); font-weight: 600; }
 nav button.on::after { content: ''; position: absolute; bottom: 1px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
 nav .fab { flex: none; width: 62px; height: 62px; min-height: 0; padding: 0; margin: 0 4px; border-radius: 50%; justify-content: center; transform: translateY(-24px);
-  background: var(--accent); color: #0a0b0a; box-shadow: 0 0 0 5px var(--bg), 0 8px 26px color-mix(in srgb, var(--accent) 45%, transparent); }
+  background: var(--fill, var(--accent)); color: #0a0b0a; box-shadow: 0 0 0 5px var(--bg), 0 8px 26px color-mix(in srgb, var(--accent) 45%, transparent); }
 nav .fab.on { color: #0a0b0a; box-shadow: 0 0 0 5px var(--bg), 0 0 0 7px var(--accent), 0 8px 30px color-mix(in srgb, var(--accent) 60%, transparent); }
 nav .fab.on::after { display: none; }
 select { width: 100%; background: var(--card); border: 1px solid var(--edge); border-radius: 18px; padding: 12px; min-height: 52px; margin-bottom: 12px; }
@@ -199,7 +204,7 @@ select { width: 100%; background: var(--card); border: 1px solid var(--edge); bo
 .toggle input { appearance: none; -webkit-appearance: none; width: 51px; height: 31px; min-height: 0; padding: 0; margin: 0; border: 0; border-radius: 999px;
   background: var(--line); position: relative; transition: background .2s; flex: none; }
 .toggle input::before { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; transition: transform .2s; }
-.toggle input:checked { background: var(--accent); }
+.toggle input:checked { background: var(--fill, var(--accent)); }
 .toggle input:checked::before { transform: translateX(20px); }
 .overdue { color: #ff6b6b; font-weight: 600; }
 .add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; margin-bottom: 12px; }
@@ -209,8 +214,9 @@ select { width: 100%; background: var(--card); border: 1px solid var(--edge); bo
 .unitbox { position: relative; min-width: 0; }
 .lbl .unitbox { margin-top: 6px; }
 .unitbox input { margin: 0; padding: 10px 60px 10px 8px; text-align: center; } /* right padding = tab width + 6, so typing never runs under the tab */
-.unitbox button { position: absolute; right: 1px; top: 1px; bottom: 1px; min-height: 0; width: 54px; min-width: 0; padding: 0; background: var(--accent); border: 0; border-radius: 0 13px 13px 0; color: #0a0b0a; font-weight: 700; font-size: 17px; }
-.add button { background: var(--grad); color: #0a0b0a; border: 0; border-radius: 999px; font-weight: 700; }
+.unitbox button { position: absolute; right: 1px; top: 1px; bottom: 1px; min-height: 0; width: 54px; min-width: 0; padding: 0; background: var(--fill, var(--accent)); border: 0; border-radius: 0 13px 13px 0; color: #0a0b0a; font-weight: 700; font-size: 17px; }
+/* Log: the same solid theme colour and box corners as the kg tab beside it (which keeps its .unitbox look). */
+.add > button { background: var(--fill, var(--accent)); color: #0a0b0a; border: 0; border-radius: 14px; font-weight: 700; }
 .x { min-height: 36px; padding: 4px 12px; margin-left: 8px; display: inline-grid; place-items: center; vertical-align: middle; }
 .gauge { position: relative; display: flex; height: 14px; margin: 16px 0 6px; }
 .gauge i:first-child { border-radius: 7px 0 0 7px; }
@@ -226,6 +232,8 @@ select { width: 100%; background: var(--card); border: 1px solid var(--edge); bo
   background: linear-gradient(to right, hsl(0 100% 60%), hsl(60 100% 60%), hsl(120 100% 60%), hsl(180 100% 60%), hsl(240 100% 60%), hsl(300 100% 60%), hsl(360 100% 60%)); }
 .hue::-webkit-slider-thumb { -webkit-appearance: none; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
 .hue::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; }
+#hue2::-webkit-slider-thumb { background: var(--accent2); }
+#hue2::-moz-range-thumb { background: var(--accent2); }
 .hue:focus { outline: none; }
 #ask { width: min(340px, calc(100% - 32px)); background: var(--card); color: var(--text); border: 1px solid var(--edge); border-radius: 26px; padding: 22px; }
 #ask::backdrop { background: rgba(0, 0, 0, .6); }
@@ -245,9 +253,135 @@ select { width: 100%; background: var(--card); border: 1px solid var(--edge); bo
 #fig3d { margin: 6px 0 8px; }
 #fig3d canvas, #m3d canvas { display: block; touch-action: pan-y; }
 .big { display: block; width: 100%; text-align: center; margin-bottom: 10px; font-weight: 600; }
+
+/* ── Gothic theme (Settings › Theme) ───────────────────────────────────────────────────────────────────────────────
+   Black and bone with an orange-red accent, blackletter titles, pointed arches, chains down the screen edges and a
+   thorn line under each page's title. Everything else is the Original layout, recoloured. */
+:root[data-look=gothic] { --bg: #050505; --card: #0d0c0b; --line: #3b3329; --text: #efe4cc; --muted: #9c907b; --good: #f2a65a;
+  --edge: rgba(239, 228, 204, .22); --grad: linear-gradient(100deg, var(--accent), color-mix(in oklch, var(--accent), #000 30%)); --m3d: #2b2723 #6d6253 #8f8270; --m3d-zoom: .86; --m3d-floor: .085;
+  --blackletter: 'UnifrakturMaguntia', 'Pirata One', serif; --gothic: 'Pirata One', 'UnifrakturMaguntia', serif; }
+[data-look=gothic] body::before { background: radial-gradient(90% 55% at 50% -12%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%); }
+/* A carved frame round the screen: pillars down both edges, a pointed arch in each top corner with a pendant finial,
+   and a rail across the top. Drawn over the page (it only sits in the 16 px margins and the status-bar strip) but under
+   the tab bar. Pillars are a separate layer starting below the arches so their pattern doesn't run up through them. */
+[data-look=gothic] body::after { content: ''; position: fixed; inset: 0 0 auto; height: 120px; z-index: 6; pointer-events: none; opacity: .55;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='120' fill='none' stroke='%23efe4cc' stroke-width='1'%3E%3Cpath d='M6 120V50M10 120V50'/%3E%3Crect x='2' y='40' width='12' height='7' fill='%23050505'/%3E%3Cpath d='M2.5 49h11M2.5 51.5h11' stroke-width='1.3'/%3E%3Cpath d='M4 40l4-5 4 5' fill='%23050505'/%3E%3Cpath d='M6 35C6 17 21 4 48 2h24M10 35C10 20 23 8.5 48 6h24'/%3E%3Ccircle cx='8' cy='27' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Ccircle cx='10' cy='20' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Ccircle cx='13.5' cy='14.5' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Ccircle cx='18.5' cy='10' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Ccircle cx='25' cy='6.6' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Ccircle cx='32' cy='4.8' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Ccircle cx='40' cy='4' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Ccircle cx='56' cy='4' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Ccircle cx='66' cy='4' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Cpath d='M13 40C14 28 21 18 33 13'/%3E%3Ccircle cx='21' cy='26' r='5' fill='%23050505'/%3E%3Ccircle cx='21' cy='23.6' r='1.7'/%3E%3Ccircle cx='18.9' cy='27.3' r='1.7'/%3E%3Ccircle cx='23.1' cy='27.3' r='1.7'/%3E%3Cpath d='M36 8v8'/%3E%3Ccircle cx='36' cy='18.5' r='2.5' fill='%23050505'/%3E%3Cpath d='M36 22l3 5-3 5-3-5z' fill='%23050505'/%3E%3Cpath d='M34.5 33l1.5 11 1.5-11z' fill='%23efe4cc'/%3E%3Cpath d='M48 6c2 5 6 7 10 7M48 6c-1 4 0 8 3 10'/%3E%3Cpath d='M1 1h9M1 1v9' stroke-width='1.4'/%3E%3Ccircle cx='4.5' cy='4.5' r='1.5' fill='%23efe4cc' stroke='none'/%3E%3C/svg%3E") left top / 72px 120px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='120' fill='none' stroke='%23efe4cc' stroke-width='1'%3E%3Cg transform='translate%2872 0%29 scale%28-1 1%29'%3E%3Cpath d='M6 120V50M10 120V50'/%3E%3Crect x='2' y='40' width='12' height='7' fill='%23050505'/%3E%3Cpath d='M2.5 49h11M2.5 51.5h11' stroke-width='1.3'/%3E%3Cpath d='M4 40l4-5 4 5' fill='%23050505'/%3E%3Cpath d='M6 35C6 17 21 4 48 2h24M10 35C10 20 23 8.5 48 6h24'/%3E%3Ccircle cx='8' cy='27' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Ccircle cx='10' cy='20' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Ccircle cx='13.5' cy='14.5' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Ccircle cx='18.5' cy='10' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Ccircle cx='25' cy='6.6' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Ccircle cx='32' cy='4.8' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Ccircle cx='40' cy='4' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Ccircle cx='56' cy='4' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Ccircle cx='66' cy='4' r='.9' fill='%23efe4cc' stroke='none'/%3E%3Cpath d='M13 40C14 28 21 18 33 13'/%3E%3Ccircle cx='21' cy='26' r='5' fill='%23050505'/%3E%3Ccircle cx='21' cy='23.6' r='1.7'/%3E%3Ccircle cx='18.9' cy='27.3' r='1.7'/%3E%3Ccircle cx='23.1' cy='27.3' r='1.7'/%3E%3Cpath d='M36 8v8'/%3E%3Ccircle cx='36' cy='18.5' r='2.5' fill='%23050505'/%3E%3Cpath d='M36 22l3 5-3 5-3-5z' fill='%23050505'/%3E%3Cpath d='M34.5 33l1.5 11 1.5-11z' fill='%23efe4cc'/%3E%3Cpath d='M48 6c2 5 6 7 10 7M48 6c-1 4 0 8 3 10'/%3E%3Cpath d='M1 1h9M1 1v9' stroke-width='1.4'/%3E%3Ccircle cx='4.5' cy='4.5' r='1.5' fill='%23efe4cc' stroke='none'/%3E%3C/g%3E%3C/svg%3E") right top / 72px 120px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='8' fill='none' stroke='%23efe4cc' stroke-width='1'%3E%3Cpath d='M0 2h64M0 6h64'/%3E%3Ccircle cx='32' cy='4' r='2' fill='%23050505'/%3E%3Ccircle cx='32' cy='4' r='.8' fill='%23efe4cc' stroke='none'/%3E%3C/svg%3E") left top / 64px 8px repeat-x; }
+[data-look=gothic]::before { content: ''; position: fixed; inset: 120px 0 0; z-index: 6; pointer-events: none; opacity: .55;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='96' fill='none' stroke='%23efe4cc' stroke-width='1'%3E%3Cpath d='M5 0v96M9 0v96'/%3E%3Cpath d='M2 3h10M2 6h10M2 9h10' stroke-width='1.4'/%3E%3Ccircle cx='7' cy='22' r='3.5' fill='%23050505'/%3E%3Ccircle cx='7' cy='22' r='1.2' fill='%23efe4cc' stroke='none'/%3E%3Cpath d='M7 32l4.5 10L7 52l-4.5-10z' fill='%23050505'/%3E%3Cpath d='M7 37l2.2 5L7 47l-2.2-5z' fill='%23efe4cc' stroke='none'/%3E%3Cpath d='M5 58c-3.5 3-3.5 6 0 9s3.5 6 0 9M9 58c3.5 3 3.5 6 0 9s-3.5 6 0 9'/%3E%3Cpath d='M5 82l-4 3.5 4 2zM9 82l4 3.5-4 2z' fill='%23efe4cc'/%3E%3Cpath d='M3 92h8M3 94.5h8'/%3E%3C/svg%3E") left 1px top / 14px 96px repeat-y, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='96' fill='none' stroke='%23efe4cc' stroke-width='1'%3E%3Cpath d='M5 0v96M9 0v96'/%3E%3Cpath d='M2 3h10M2 6h10M2 9h10' stroke-width='1.4'/%3E%3Ccircle cx='7' cy='22' r='3.5' fill='%23050505'/%3E%3Ccircle cx='7' cy='22' r='1.2' fill='%23efe4cc' stroke='none'/%3E%3Cpath d='M7 32l4.5 10L7 52l-4.5-10z' fill='%23050505'/%3E%3Cpath d='M7 37l2.2 5L7 47l-2.2-5z' fill='%23efe4cc' stroke='none'/%3E%3Cpath d='M5 58c-3.5 3-3.5 6 0 9s3.5 6 0 9M9 58c3.5 3 3.5 6 0 9s-3.5 6 0 9'/%3E%3Cpath d='M5 82l-4 3.5 4 2zM9 82l4 3.5-4 2z' fill='%23efe4cc'/%3E%3Cpath d='M3 92h8M3 94.5h8'/%3E%3C/svg%3E") right 1px top / 14px 96px repeat-y; }
+[data-look=gothic] #timer { left: var(--gut); right: var(--gut); }
+/* Page titles start below the arches (on an iPhone the status bar already pushes them there). */
+[data-look=gothic] #view > :first-child { padding-top: max(calc(4px + env(safe-area-inset-top)), 50px); }
+[data-look=gothic] #view > :is(h1, .back):first-child { padding-top: max(calc(16px + env(safe-area-inset-top)), 50px); }
+[data-look=gothic] h1, [data-look=gothic] h2, [data-look=gothic] .back { font-family: var(--blackletter); font-weight: 400; letter-spacing: 0; }
+[data-look=gothic] h1 { font-size: 30px; }
+[data-look=gothic] .back { font-size: 26px; }
+[data-look=gothic] :is(#view > h1:first-child, .top h1, #view > .back:first-child) { font-size: 36px; line-height: 1.1; }
+[data-look=gothic] .restday { font-family: var(--gothic); font-size: 24px; }
+/* The pinned title bar is solid, so nothing scrolling under it shows through; it carries the same top glow as the page
+   behind it (same size and place), and ends just under its thorn line with only a short fade. */
+[data-look=gothic] #view > :first-child::before { inset: 0 0 -16px; -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: radial-gradient(90% 55% at 50% -12%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%) center top / 100vw 65vh no-repeat, var(--bg);
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 6px), transparent); mask-image: linear-gradient(#000 calc(100% - 6px), transparent); }
+/* Thorn line under each page's pinned title. */
+[data-look=gothic] #view > :first-child { margin-bottom: 18px; }
+[data-look=gothic] #view > :first-child::after { content: ''; position: absolute; left: var(--gut); right: var(--gut); bottom: -8px; height: 14px; opacity: .55; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='14'%3E%3Cg fill='%23efe4cc'%3E%3Cpath d='M0 7.4h48v-.8H0z'/%3E%3Cpath d='M12 7 14 1l2 6zM32 7l2 6 2-6zM22.5 7 24 3.5 25.5 7 24 10.5z'/%3E%3Ccircle cx='4' cy='7' r='1.2'/%3E%3Ccircle cx='44' cy='7' r='1.2'/%3E%3C/g%3E%3C/svg%3E") center / 48px 14px repeat-x; }
+/* Cards and buttons: squared off, with a second fine line inside the border like an engraved frame. */
+[data-look=gothic] :where(button, .btn, select, .ex, .hero), [data-look=gothic] :is(#timer, #ask, #view > svg.chart, .chartwrap) { border-radius: 6px; border-color: var(--edge);
+  box-shadow: inset 0 0 0 3px var(--card), inset 0 0 0 4px rgba(239, 228, 204, .1); }
+[data-look=gothic] :is(.names button, .sd, nav button, .back, .grip, .ex-head, .circle) { box-shadow: none; }
+[data-look=gothic] input:where(:not(.hue)) { border-radius: 4px; background: #000; }
+[data-look=gothic] .chip { border-radius: 4px; }
+/* All text in the gothic face (it has no bold, so nothing is faked bold); titles in the blackletter above. */
+[data-look=gothic] body { font-family: var(--gothic); font-size: 18px; letter-spacing: .02em; font-synthesis: none; }
+[data-look=gothic] .big, [data-look=gothic] nav button { font-size: 18px; font-weight: 400; }
+[data-look=gothic] nav button { font-size: 15px; }
+[data-look=gothic] .names button { font-size: 17px; }
+/* Boxes that are filled orange: plain squared corners, no engraved inner line. The kg / cm tab sits flush in its box. */
+[data-look=gothic] .unitbox button { border-radius: 0 3px 3px 0; font-size: 18px; font-weight: 400; box-shadow: none; }
+[data-look=gothic] .gauge i:first-child { border-radius: 2px 0 0 2px; }
+[data-look=gothic] .gauge i:nth-child(4) { border-radius: 0 2px 2px 0; }
+[data-look=gothic] .gauge b { border-radius: 1px; }
+[data-look=gothic] :is(.big.save, #go, .add > button) { box-shadow: none; border-radius: 4px; color: #0a0505; font-size: 20px; font-weight: 400; }
+/* Today: the 3D model stands in a pointed-arch window; the week's days are little arches too. */
+[data-look=gothic] .hero { background: var(--card); padding: 12px; }
+/* The 3D model's window: a carved gothic arch (crockets, beading, cusped tracery with hanging spikes) on twin columns
+   over an arcaded plinth. The arch and plinth scale with the window's width so they never stretch; the columns repeat
+   down its sides. Drawn behind the model, so the figure is never hidden by the tracery. */
+[data-look=gothic] .model { position: relative; overflow: hidden; border-radius: 0; /* dark between the columns, card colour outside them */
+  background: radial-gradient(60% 50% at 50% 45%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 75%),
+    linear-gradient(90deg, var(--card) 6%, #000 6% 94%, var(--card) 94%); }
+[data-look=gothic] .model::before { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 140' fill='none' stroke='%23efe4cc' stroke-opacity='.6' stroke-width='1.3' stroke-linejoin='round'%3E%3Cpath d='M0 0H200V140H192V132C192 62 150 14 100 5 50 14 8 62 8 132V140H0Z' fill='%230d0c0b' stroke='none'/%3E%3Cpath d='M8 132C8 62 50 14 100 5 150 14 192 62 192 132'/%3E%3Cpath d='M17 132C17 69 55 24 100 15 145 24 183 69 183 132'/%3E%3Ccircle cx='12.9' cy='121.1' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='15.7' cy='100.5' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='21.1' cy='81.6' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='28.7' cy='64.5' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='38.4' cy='49.4' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='49.9' cy='36.5' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='62.8' cy='25.8' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='77.0' cy='17.5' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='92.2' cy='11.8' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='107.8' cy='11.8' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='123.0' cy='17.5' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='137.2' cy='25.8' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='150.1' cy='36.5' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='161.6' cy='49.4' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='171.3' cy='64.5' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='178.9' cy='81.6' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='184.3' cy='100.5' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='187.1' cy='121.1' r='1.1' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Cpath d='M15.3 83.9c-2-3-1-6 2-6' stroke-width='1.1'/%3E%3Cpath d='M27.4 57.2c-2-3-1-6 2-6' stroke-width='1.1'/%3E%3Cpath d='M44.1 35.3c-2-3-1-6 2-6' stroke-width='1.1'/%3E%3Cpath d='M64.5 18.8c-2-3-1-6 2-6' stroke-width='1.1'/%3E%3Cpath d='M87.7 8.1c-2-3-1-6 2-6' stroke-width='1.1'/%3E%3Cpath d='M112.3 8.1c-2-3-1-6 2-6' stroke-width='1.1'/%3E%3Cpath d='M135.5 18.8c-2-3-1-6 2-6' stroke-width='1.1'/%3E%3Cpath d='M155.9 35.3c-2-3-1-6 2-6' stroke-width='1.1'/%3E%3Cpath d='M172.6 57.2c-2-3-1-6 2-6' stroke-width='1.1'/%3E%3Cpath d='M184.7 83.9c-2-3-1-6 2-6' stroke-width='1.1'/%3E%3Cpath d='M100 5V0' stroke-width='1.6'/%3E%3Cpath d='M22 130A20.5 20.5 0 0 1 25 96A19.6 19.6 0 0 1 38 66A20.4 20.4 0 0 1 60 40A25.6 25.6 0 0 1 100 25A25.6 25.6 0 0 1 140 40A20.4 20.4 0 0 1 162 66A19.6 19.6 0 0 1 175 96A20.5 20.5 0 0 1 178 130' stroke-width='1.1'/%3E%3Ccircle cx='25' cy='96' r='1.8' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Cpath d='M25 97.8l-1 3.5 1 2.5 1-2.5z' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='38' cy='66' r='1.8' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Cpath d='M38 67.8l-1 3.5 1 2.5 1-2.5z' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='60' cy='40' r='1.8' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Cpath d='M60 41.8l-1 3.5 1 2.5 1-2.5z' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='100' cy='25' r='1.8' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Cpath d='M100 26.8l-1 3.5 1 2.5 1-2.5z' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='140' cy='40' r='1.8' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Cpath d='M140 41.8l-1 3.5 1 2.5 1-2.5z' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='162' cy='66' r='1.8' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Cpath d='M162 67.8l-1 3.5 1 2.5 1-2.5z' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Ccircle cx='175' cy='96' r='1.8' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Cpath d='M175 97.8l-1 3.5 1 2.5 1-2.5z' fill='%23efe4cc' fill-opacity='.6' stroke='none'/%3E%3Cpath d='M2 131h20l-3 5h-14zM178 131h20l-3 5h-14z' fill='%230d0c0b'/%3E%3Cpath d='M4 136.5h16M180 136.5h16'/%3E%3C/svg%3E") center top / 100% auto no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 22' fill='none' stroke='%23efe4cc' stroke-opacity='.6' stroke-width='1.3' stroke-linejoin='round'%3E%3Cpath d='M0 4H200V22H0Z' fill='%230d0c0b' stroke='none'/%3E%3Cpath d='M4 4h16v-3H4zM180 4h16v-3h-16z' fill='%230d0c0b'/%3E%3Cpath d='M0 4.5h200M0 21h200'/%3E%3Cpath d='M4 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M13 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M22 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M31 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M40 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M49 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M58 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M67 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M76 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M85 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M94 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M103 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M112 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M121 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M130 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M139 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M148 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M157 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M166 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M175 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M184 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3Cpath d='M193 21v-6a3.5 3.5 0 0 1 7 0v6' stroke-width='1'/%3E%3C/svg%3E") center bottom / 100% auto no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 44' fill='none' stroke='%23efe4cc' stroke-opacity='.6' stroke-width='1.3' stroke-linejoin='round'%3E%3Cpath d='M9 0v44M15 0v44'/%3E%3Cpath d='M7 20h10M7 23h10' stroke-width='1.1'/%3E%3C/svg%3E") left top / 10% auto repeat-y, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 44' fill='none' stroke='%23efe4cc' stroke-opacity='.6' stroke-width='1.3' stroke-linejoin='round'%3E%3Cpath d='M5 0v44M11 0v44'/%3E%3Cpath d='M3 20h10M3 23h10' stroke-width='1.1'/%3E%3C/svg%3E") right top / 10% auto repeat-y; }
+[data-look=gothic] .model > * { position: relative; z-index: 1; }
+/* Week strip: each training day is a little gothic window (cusped arch on columns over a plinth) with its date centred
+   inside; the day showing is lit in the accent (a rest day just gets its date lit, no arch). Day names a size up. */
+[data-look=gothic] .sd { gap: 4px; }
+[data-look=gothic] .sd small { font-size: 16px; }
+[data-look=gothic] .sd span { position: relative; width: 44px; height: 60px; border: 0; border-radius: 0; box-shadow: none; font-size: 20px; line-height: 1; padding-top: 4px; }
+[data-look=gothic] .sd.train span::before { content: ''; position: absolute; inset: 0; background: #6b5f4d; pointer-events: none;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 60' fill='none' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'%3E%3Cpath d='M3.5 19C3.5 9.5 11.5 3 22 1.2 32.5 3 40.5 9.5 40.5 19M7.5 19C7.5 11.5 14 5.6 22 4.3 30 5.6 36.5 11.5 36.5 19'/%3E%3Cpath d='M7.5 19A5.2 5.2 0 0 1 10.2 13A5.2 5.2 0 0 1 15 8.6A5.2 5.2 0 0 1 22 7.4A5.2 5.2 0 0 1 29 8.6A5.2 5.2 0 0 1 33.8 13A5.2 5.2 0 0 1 36.5 19' stroke-width='1.1'/%3E%3Ccircle cx='10.2' cy='13' r='1' fill='%23000' stroke='none'/%3E%3Ccircle cx='15' cy='8.6' r='1' fill='%23000' stroke='none'/%3E%3Ccircle cx='22' cy='7.4' r='1' fill='%23000' stroke='none'/%3E%3Ccircle cx='29' cy='8.6' r='1' fill='%23000' stroke='none'/%3E%3Ccircle cx='33.8' cy='13' r='1' fill='%23000' stroke='none'/%3E%3Cpath d='M2.5 19h7l-1.4 2.6h-4.2zM34.5 19h7l-1.4 2.6h-4.2z' fill='%23000'/%3E%3Cpath d='M5 21.6v26.4M7 21.6v26.4M37 21.6v26.4M39 21.6v26.4'/%3E%3Cpath d='M3.5 48h5v2.6h-5zM35.5 48h5v2.6h-5z' fill='%23000'/%3E%3Cpath d='M1 50.6h42M1 58.8h42'/%3E%3Cpath d='M2.5 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M7.4 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M12.3 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M17.200000000000003 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M22.1 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M27.0 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M31.900000000000002 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M36.800000000000004 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 60' fill='none' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'%3E%3Cpath d='M3.5 19C3.5 9.5 11.5 3 22 1.2 32.5 3 40.5 9.5 40.5 19M7.5 19C7.5 11.5 14 5.6 22 4.3 30 5.6 36.5 11.5 36.5 19'/%3E%3Cpath d='M7.5 19A5.2 5.2 0 0 1 10.2 13A5.2 5.2 0 0 1 15 8.6A5.2 5.2 0 0 1 22 7.4A5.2 5.2 0 0 1 29 8.6A5.2 5.2 0 0 1 33.8 13A5.2 5.2 0 0 1 36.5 19' stroke-width='1.1'/%3E%3Ccircle cx='10.2' cy='13' r='1' fill='%23000' stroke='none'/%3E%3Ccircle cx='15' cy='8.6' r='1' fill='%23000' stroke='none'/%3E%3Ccircle cx='22' cy='7.4' r='1' fill='%23000' stroke='none'/%3E%3Ccircle cx='29' cy='8.6' r='1' fill='%23000' stroke='none'/%3E%3Ccircle cx='33.8' cy='13' r='1' fill='%23000' stroke='none'/%3E%3Cpath d='M2.5 19h7l-1.4 2.6h-4.2zM34.5 19h7l-1.4 2.6h-4.2z' fill='%23000'/%3E%3Cpath d='M5 21.6v26.4M7 21.6v26.4M37 21.6v26.4M39 21.6v26.4'/%3E%3Cpath d='M3.5 48h5v2.6h-5zM35.5 48h5v2.6h-5z' fill='%23000'/%3E%3Cpath d='M1 50.6h42M1 58.8h42'/%3E%3Cpath d='M2.5 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M7.4 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M12.3 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M17.200000000000003 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M22.1 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M27.0 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M31.900000000000002 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M36.800000000000004 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
+[data-look=gothic] .sd.train.on span::before { content: ''; position: absolute; inset: 0; background: var(--fill, var(--accent)); pointer-events: none;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 60' fill='none' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'%3E%3Cpath d='M3.5 19C3.5 9.5 11.5 3 22 1.2 32.5 3 40.5 9.5 40.5 19M7.5 19C7.5 11.5 14 5.6 22 4.3 30 5.6 36.5 11.5 36.5 19'/%3E%3Cpath d='M7.5 19A5.2 5.2 0 0 1 10.2 13A5.2 5.2 0 0 1 15 8.6A5.2 5.2 0 0 1 22 7.4A5.2 5.2 0 0 1 29 8.6A5.2 5.2 0 0 1 33.8 13A5.2 5.2 0 0 1 36.5 19' stroke-width='1.1'/%3E%3Ccircle cx='10.2' cy='13' r='1' fill='%23000' stroke='none'/%3E%3Ccircle cx='15' cy='8.6' r='1' fill='%23000' stroke='none'/%3E%3Ccircle cx='22' cy='7.4' r='1' fill='%23000' stroke='none'/%3E%3Ccircle cx='29' cy='8.6' r='1' fill='%23000' stroke='none'/%3E%3Ccircle cx='33.8' cy='13' r='1' fill='%23000' stroke='none'/%3E%3Cpath d='M2.5 19h7l-1.4 2.6h-4.2zM34.5 19h7l-1.4 2.6h-4.2z' fill='%23000'/%3E%3Cpath d='M5 21.6v26.4M7 21.6v26.4M37 21.6v26.4M39 21.6v26.4'/%3E%3Cpath d='M3.5 48h5v2.6h-5zM35.5 48h5v2.6h-5z' fill='%23000'/%3E%3Cpath d='M1 50.6h42M1 58.8h42'/%3E%3Cpath d='M2.5 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M7.4 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M12.3 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M17.200000000000003 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M22.1 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M27.0 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M31.900000000000002 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M36.800000000000004 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 60' fill='none' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'%3E%3Cpath d='M3.5 19C3.5 9.5 11.5 3 22 1.2 32.5 3 40.5 9.5 40.5 19M7.5 19C7.5 11.5 14 5.6 22 4.3 30 5.6 36.5 11.5 36.5 19'/%3E%3Cpath d='M7.5 19A5.2 5.2 0 0 1 10.2 13A5.2 5.2 0 0 1 15 8.6A5.2 5.2 0 0 1 22 7.4A5.2 5.2 0 0 1 29 8.6A5.2 5.2 0 0 1 33.8 13A5.2 5.2 0 0 1 36.5 19' stroke-width='1.1'/%3E%3Ccircle cx='10.2' cy='13' r='1' fill='%23000' stroke='none'/%3E%3Ccircle cx='15' cy='8.6' r='1' fill='%23000' stroke='none'/%3E%3Ccircle cx='22' cy='7.4' r='1' fill='%23000' stroke='none'/%3E%3Ccircle cx='29' cy='8.6' r='1' fill='%23000' stroke='none'/%3E%3Ccircle cx='33.8' cy='13' r='1' fill='%23000' stroke='none'/%3E%3Cpath d='M2.5 19h7l-1.4 2.6h-4.2zM34.5 19h7l-1.4 2.6h-4.2z' fill='%23000'/%3E%3Cpath d='M5 21.6v26.4M7 21.6v26.4M37 21.6v26.4M39 21.6v26.4'/%3E%3Cpath d='M3.5 48h5v2.6h-5zM35.5 48h5v2.6h-5z' fill='%23000'/%3E%3Cpath d='M1 50.6h42M1 58.8h42'/%3E%3Cpath d='M2.5 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M7.4 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M12.3 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M17.200000000000003 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M22.1 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M27.0 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M31.900000000000002 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3Cpath d='M36.800000000000004 58.8v-3a2.25 2.25 0 0 1 4.5 0v3' stroke-width='.9'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
+[data-look=gothic] .sd.on span { filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 55%, transparent)); }
+[data-look=gothic] .circle { border-radius: 3px; transform: rotate(45deg); width: 30px; height: 30px; margin: 0 5px 0 17px; border-color: #5a4f41; }
+[data-look=gothic] .circle > * { transform: rotate(-45deg); }
+/* Flat muscle map in bone and charcoal. */
+[data-look=gothic] .sil, [data-look=gothic] .m > * { fill: #15120f; }
+[data-look=gothic] .out, [data-look=gothic] .m > * { stroke: #6b5f4d; }
+/* Tab bar: square, bone-edged; History is a diamond. */
+[data-look=gothic] nav { z-index: 7; border-radius: 0; border-top: 0; padding-top: 14px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='12' fill='none' stroke='%23efe4cc' stroke-width='1'%3E%3Cpath d='M0 6h60M0 9h60'/%3E%3Cpath d='M30 1.5l4 6-4 6-4-6z' fill='%23050505'/%3E%3Cpath d='M30 5l1.5 2.5L30 10l-1.5-2.5z' fill='%23efe4cc' stroke='none'/%3E%3Cpath d='M13.5 6L15 1.5 16.5 6zM43.5 6L45 1.5 46.5 6z' fill='%23efe4cc'/%3E%3C/svg%3E") left top / 60px 12px repeat-x, rgba(5, 5, 5, .96); }
+[data-look=gothic] nav button.on::after { width: 6px; height: 6px; border-radius: 0; transform: rotate(45deg); }
+[data-look=gothic] nav .fab { width: 54px; height: 54px; border-radius: 4px; transform: translateY(-24px) rotate(45deg); margin: 0 10px;
+  box-shadow: 0 0 0 5px var(--bg), 0 0 0 6px rgba(239, 228, 204, .4), 0 8px 26px color-mix(in srgb, var(--accent) 45%, transparent); }
+[data-look=gothic] nav .fab.on { box-shadow: 0 0 0 5px var(--bg), 0 0 0 7px var(--accent), 0 8px 30px color-mix(in srgb, var(--accent) 60%, transparent); }
+[data-look=gothic] nav .fab svg { transform: rotate(-45deg); }
+[data-look=gothic] .toggle input { border-radius: 3px; box-shadow: none; }
+[data-look=gothic] .toggle input::before { border-radius: 2px; background: var(--text); }
+/* Gothic rest day: the kneeling knight artwork, its edges fading into the page so it has no hard border. */
+/* The glow is its own layer (rest-fire.jpg, white on black) tinted to the theme colour and added on top of the grey knight.
+   One copy stays still so the rim hugs the armour; fainter copies, bent by the #smoke filters, drift up off it like smoke. */
+.restart { position: relative; width: calc(100% + 2 * var(--gut)); margin: -8px calc(-1 * var(--gut)) 0; aspect-ratio: 960 / 730;
+  -webkit-mask-image: radial-gradient(75% 70% at 50% 48%, #000 55%, transparent); mask-image: radial-gradient(75% 70% at 50% 48%, #000 55%, transparent); }
+.restart img, .flames { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.flames { isolation: isolate; mix-blend-mode: screen; mix-blend-mode: plus-lighter; }
+.flames::after { content: ''; position: absolute; inset: 0; background: var(--fill, var(--accent)); mix-blend-mode: multiply; }
+/* Three smoke copies take turns: each drifts up and spreads out as it fades, so the wisps keep rising. */
+.flames .smoke { mix-blend-mode: plus-lighter; filter: url(#smoke1); transform-origin: 50% 80%; opacity: 0; animation: smoke 6s linear infinite; }
+.flames .smoke:nth-child(3) { filter: url(#smoke2); animation-delay: -2s; }
+.flames .smoke:nth-child(4) { filter: url(#smoke3); animation-delay: -4s; }
+@keyframes smoke { 0% { opacity: 0; transform: translateY(3%) scale(1) rotate(0); } 20% { opacity: .6; } 55% { opacity: .4; transform: translateY(-6%) scale(1.06) rotate(-1deg); } 100% { opacity: 0; transform: translateY(-16%) scale(1.14) rotate(1deg); } }
+@media (prefers-reduced-motion: reduce) { .flames .smoke { display: none; } }
+.restart + .restday { margin-top: 4px; }
+/* Tab bar icons: Original's set, or Gothic's castle, sword and shield, book, knight and cog. */
+nav svg.g { display: none; }
+[data-look=gothic] nav svg.o { display: none; }
+[data-look=gothic] nav svg.g { display: block; }
+nav .fillbg { fill: #050505; }
+nav .fab .fillbg { fill: color-mix(in srgb, var(--accent), var(--accent2, var(--accent))); } /* two-tone: the colour mid-fade, where the icon sits */
+/* Settings › Theme: two buttons, each showing a sample of its look. */
+.looks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.looks button { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 0; font-size: 15px; color: var(--muted); }
+.looks .on { border-color: var(--accent); color: var(--text); font-weight: 600; }
+.looks i { width: 64px; height: 40px; border-radius: 10px; display: grid; place-items: center; font-style: normal; font-size: 24px; line-height: 1; }
+.look-original i { background: radial-gradient(60% 80% at 30% 20%, hsl(75 100% 60% / .35), transparent), #141614; border: 1px solid rgba(255, 255, 255, .1); }
+.look-original i::before { content: ''; width: 14px; height: 14px; border-radius: 50%; background: hsl(75 100% 60%); }
+.look-gothic i { background: #050505; border: 1px solid rgba(239, 228, 204, .5); border-radius: 50% 50% 3px 3px / 60% 60% 3px 3px; color: hsl(16 100% 54%); font-family: 'UnifrakturMaguntia', serif; }
+.look-gothic i::before { content: 'G'; }
 </style>
 </head>
 <body>
+<!-- #smoke1–3: wide, blurred noise that bends the rest-day knight's glow into wisps, a different shape for each wisp. The
+     shapes hold still (morphing them can only swing back and forth); the wisps' rise in CSS is what moves, always upward. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="smoke1" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.007 0.016" numOctaves="3" seed="7" result="n"/>
+  <feDisplacementMap in="SourceGraphic" in2="n" scale="60" xChannelSelector="R" yChannelSelector="G"/><feGaussianBlur stdDeviation="4"/></filter>
+<filter id="smoke2" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.007 0.016" numOctaves="3" seed="23" result="n"/>
+  <feDisplacementMap in="SourceGraphic" in2="n" scale="60" xChannelSelector="R" yChannelSelector="G"/><feGaussianBlur stdDeviation="4"/></filter>
+<filter id="smoke3" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.007 0.016" numOctaves="3" seed="41" result="n"/>
+  <feDisplacementMap in="SourceGraphic" in2="n" scale="60" xChannelSelector="R" yChannelSelector="G"/><feGaussianBlur stdDeviation="4"/></filter></svg>
 <main id="view"></main>
 <dialog id="ask"><form method="dialog"><b></b><p class="muted"></p>
   <div class="pair"><button value="">Cancel</button><button value="y" class="danger"></button></div></form></dialog>
@@ -259,11 +393,11 @@ select { width: 100%; background: var(--card); border: 1px solid var(--edge); bo
   <button id="go">Start rest</button>
 </div>
 <nav>
-  <button data-tab="today"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/></svg>Today</button>
-  <button data-tab="plan"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><g transform="rotate(-45 12 12)"><path d="M3 9.5v5M6.5 7v10M17.5 7v10M21 9.5v5M6.5 12h11"/></g></svg>Plan</button>
-  <button data-tab="history" class="fab" aria-label="History"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8.5 16v-3M12 16V8M15.5 16v-5"/></svg></button>
-  <button data-tab="body"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="4.5" r="2"/><path d="M5 9h14M12 9v5.5M12 14.5 9 21M12 14.5l3 6.5"/></svg>Body</button>
-  <button data-tab="settings"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Settings</button>
+  <button data-tab="today"><svg class="o" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/></svg><svg class="g" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 21h19M3.3 21V5.5h1.4v2.2h2.2V5.5h1.4V21M15.7 21V5.5h1.4v2.2h2.2V5.5h1.4V21M8.3 21V10.5h1.6v2h2.2v-2h1.8v2h2.2v-2h-.4V21"/><path d="M10.3 21v-3.3a1.7 1.7 0 0 1 3.4 0V21M5.8 10.5v2.4M18.2 10.5v2.4M5.8 5.5V2l2.6 1-2.6 1"/></svg>Today</button>
+  <button data-tab="plan"><svg class="o" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><g transform="rotate(-45 12 12)"><path d="M3 9.5v5M6.5 7v10M17.5 7v10M21 9.5v5M6.5 12h11"/></g></svg><svg class="g" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.4 5.9 19.5 18l1.5 3-3-1.5L5.9 7.4M3.2 8.6l5.4-5.4M5.4 5.4 3.6 3.6"/><circle cx="2.9" cy="2.9" r="1"/><path class="fillbg" d="M12.8 7.2l5.2 1.9v3.6c0 3.3-2.3 5.6-5.2 6.9-2.9-1.3-5.2-3.6-5.2-6.9V9.1z"/><path d="M12.8 9.6v7.1M10.2 12h5.2"/></svg>Plan</button>
+  <button data-tab="history" class="fab" aria-label="History"><svg class="o" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8.5 16v-3M12 16V8M15.5 16v-5"/></svg><svg class="g" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path fill="currentColor" stroke="none" d="M.8 4.6v16.3c4.5-.5 8.4 0 11.2 1.8 2.8-1.8 6.7-2.3 11.2-1.8V4.6z"/><path class="fillbg" d="M12 4.6C9.8 3 6.7 2.5 2.5 3v16.4c4.2-.5 7.3 0 9.5 1.6 2.2-1.6 5.3-2.1 9.5-1.6V3C17.3 2.5 14.2 3 12 4.6z"/><path stroke-width=".7" d="M2.5 16.2c4.2-.5 7.3 0 9.5 1.6 2.2-1.6 5.3-2.1 9.5-1.6M2.5 17.8c4.2-.5 7.3 0 9.5 1.6 2.2-1.6 5.3-2.1 9.5-1.6"/><path stroke-width="1.4" d="M12 4.6v13.2M5 6.6c1.8-.1 3.3.2 4.6.8M5 9.4c1.8-.1 3.3.2 4.6.8M5 12.2c1.8-.1 3.3.2 4.6.8M14.4 7.4c1.3-.6 2.8-.9 4.6-.8M14.4 10.2c1.3-.6 2.8-.9 4.6-.8M14.4 13c1.3-.6 2.8-.9 4.6-.8"/></svg></button>
+  <button data-tab="body"><svg class="o" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="4.5" r="2"/><path d="M5 9h14M12 9v5.5M12 14.5 9 21M12 14.5l3 6.5"/></svg><svg class="g" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="fillbg" d="M6.5 14V8.2C6.5 4.9 9 2.5 12 1.7c3 .8 5.5 3.2 5.5 6.5V14z"/><path d="M12 1.7V14M8 8.3h3.2M12.8 8.3H16"/><circle cx="8.9" cy="10.6" r=".45" fill="currentColor" stroke="none"/><circle cx="8.9" cy="12" r=".45" fill="currentColor" stroke="none"/><circle cx="10.3" cy="10.6" r=".45" fill="currentColor" stroke="none"/><circle cx="10.3" cy="12" r=".45" fill="currentColor" stroke="none"/><circle cx="13.7" cy="10.6" r=".45" fill="currentColor" stroke="none"/><circle cx="13.7" cy="12" r=".45" fill="currentColor" stroke="none"/><circle cx="15.1" cy="10.6" r=".45" fill="currentColor" stroke="none"/><circle cx="15.1" cy="12" r=".45" fill="currentColor" stroke="none"/><path d="M7.9 14l-.6 1.6h9.4l-.6-1.6M2 22.5v-1.8c0-2.6 2.2-4.7 5-5.1h10c2.8.4 5 2.5 5 5.1v1.8M2.6 19.5c1.3-.9 2.8-1.4 4.5-1.6M21.4 19.5c-1.3-.9-2.8-1.4-4.5-1.6M12 17.2v4.5M10.4 18.7h3.2"/></svg>Body</button>
+  <button data-tab="settings"><svg class="o" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg><svg class="g" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.34 4.79L10.49 1.91L13.51 1.91L13.66 4.79L15.92 5.72L18.07 3.80L20.20 5.93L18.28 8.08L19.21 10.34L22.09 10.49L22.09 13.51L19.21 13.66L18.28 15.92L20.20 18.07L18.07 20.20L15.92 18.28L13.66 19.21L13.51 22.09L10.49 22.09L10.34 19.21L8.08 18.28L5.93 20.20L3.80 18.07L5.72 15.92L4.79 13.66L1.91 13.51L1.91 10.49L4.79 10.34L5.72 8.08L3.80 5.93L5.93 3.80L8.08 5.72Z"/><circle cx="12" cy="12" r="3.2"/></svg>Settings</button>
 </nav>
 <script src="programme.js"></script>
 <script src="app.js"></script>

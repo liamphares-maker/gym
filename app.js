@@ -55,7 +55,7 @@ function tickOld(d) {
   d.tickOnly = 1;
 }
 tickOld(data);
-// Settings: data.restDefault (seconds, default 90), data.beep (false = silent), data.haptics (false = off), data.lastBackup (date of the last export).
+// Settings: data.look (theme: missing = Original, 'gothic' = Gothic), data.theme / data.gothicTheme (each theme's colour), data.theme2 / data.gothicTheme2 (its two-tone second colour), data.restDefault (seconds, default 90), data.beep (false = silent), data.haptics (false = off), data.lastBackup (date of the last export).
 const save = () => localStorage.setItem(KEY, JSON.stringify(data));
 save(); // keeps the library (and its ids) from the first run
 // A custom exercise keeps its library entry up to date while you edit the exercise it was created as.
@@ -94,7 +94,8 @@ function suggest(e, last) {
 
 function render() {
   view.classList.remove('slidein', 'slideout');
-  document.documentElement.style.setProperty('--accent', data.theme || THEMES.Lime);
+  document.documentElement.dataset.look = data.look || 'original'; // Settings › Theme: 'original' or 'gothic'
+  paintTheme();
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   view.innerHTML = picking ? pickHTML() : { today: todayHTML, plan: planHTML, history: historyHTML, body: bodyHTML, settings: settingsHTML }[tab]();
   timerEl.hidden = !(tab === 'today' && W(sel) && !picking);
@@ -111,8 +112,8 @@ let fig3d;
 function show3d() {
   const el = $('fig3d');
   if (el) (fig3d ||= import('./figure3d.js')).then(m => m.show(el, data.bmi.h, data.bmi.kg));
-  const m3d = $('m3d'); // Today: the muscle map in 3D, lit for the workout showing and the exercise picked
-  if (m3d) (fig3d ||= import('./figure3d.js')).then(m => m.muscles(m3d, new Set(W(sel).exercises.flatMap(e => e.muscles)), new Set(EX[hl]?.muscles)));
+  const m3d = $('m3d'); // Today: the muscle map in 3D, lit for the workout showing and the exercise picked (none on a rest day)
+  if (m3d) (fig3d ||= import('./figure3d.js')).then(m => m.muscles(m3d, new Set(W(sel)?.exercises.flatMap(e => e.muscles)), new Set(EX[hl]?.muscles)));
 }
 
 
@@ -121,7 +122,7 @@ function todayHTML() {
   let h = `<div class="top"><div><p class="muted">${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
     <h1>${w ? esc(w.name) : 'Rest day'}</h1></div></div>` + weekHTML();
   const add = '<button class="big" id="addtoday">+ Add exercise</button>';
-  if (!w) return h + `<div class="bust">${figure(FRONT, new Set(), new Set(), '0 -8 200 140').repeat(2)}</div>` + '<p class="restday">Rest day. Eat, sleep, grow.<br><span class="muted small">Training anyway? Add an exercise, or tap a training day above.</span></p>' + add;
+  if (!w) return h + (data.look === 'gothic' ? '<div class="restart"><img src="rest-knight.jpg" alt=""><div class="flames"><img src="rest-fire.jpg" alt=""><img class="smoke" src="rest-fire.jpg" alt=""><img class="smoke" src="rest-fire.jpg" alt=""><img class="smoke" src="rest-fire.jpg" alt=""></div></div>' : '<div class="restmodel" id="m3d"></div>') + '<p class="restday">Rest day. Eat, sleep, grow.<br><span class="muted small">Training anyway? Add an exercise, or tap a training day above.</span></p>' + add;
   if (!w.exercises.length) return h + '<p class="restday muted">No exercises yet.</p>' + add;
   const did = data.done[today()] || [], on = new Set(w.exercises.flatMap(e => e.muscles));
   return h + `<div class="hero"><div class="model" id="m3d">${bodyMap(on, new Set(EX[hl]?.muscles))}</div>
@@ -225,10 +226,27 @@ const ICON = {
 };
 const muscleIcon = m => { const [parts, x, y, s] = ICON[m]; return figure(parts, new Set(), new Set([m]), `${x - s / 2} ${y - s / 2} ${s} ${s}`); };
 
+// Plan's icons come from the 3D muscle model (figure3d.js icons()), made the first time they're needed and again when the
+// colours change; the flat icons stand in until they're ready.
+let micons = {}, miconsFor = '', miconsMaking = '';
+function iconsFor() {
+  const key = data.look + accent();
+  if (miconsFor !== key && miconsMaking !== key) {
+    miconsMaking = key;
+    (fig3d ||= import('./figure3d.js')).then(m => m.icons()).then(r => {
+      if (miconsMaking !== key) return; // colours changed again meanwhile
+      micons = r; miconsFor = key; miconsMaking = '';
+      if (tab === 'plan') render();
+    });
+  }
+  return miconsFor === key ? micons : null;
+}
+
 // Conveyor belt of muscle icons: the list is repeated so it fills the belt, then doubled so the loop is seamless.
 function belt(muscles) {
   if (!muscles.length) return '';
-  const one = Array(Math.ceil(5 / muscles.length)).fill(muscles).flat().map(m => `<span title="${label(m)}">${muscleIcon(m)}</span>`).join('');
+  const ic = iconsFor();
+  const one = Array(Math.ceil(5 / muscles.length)).fill(muscles).flat().map(m => `<span title="${label(m)}">${ic ? `<img src="${ic[m]}" alt="">` : muscleIcon(m)}</span>`).join('');
   // The start point follows the clock, so a redraw (e.g. leaving remove mode) carries on mid-loop instead of jumping back to the start.
   const d = muscles.length * Math.ceil(5 / muscles.length) * 2.5;
   return `<span class="belt" aria-hidden="true"><span class="track" style="animation-duration:${d}s;animation-delay:-${(performance.now() / 1000 % d).toFixed(2)}s">${one}${one}</span></span>`;
@@ -395,10 +413,31 @@ function backupAge() {
 
 // Theme colours are hues; the slider picks any hue in between.
 const hue = h => `hsl(${h} 100% 60%)`;
-const THEMES = Object.fromEntries(Object.entries({ Lime: 75, Orange: 25, Red: 355, Pink: 330, Purple: 265, Blue: 212, Teal: 180, Yellow: 45 }).map(([n, h]) => [n, hue(h)]));
-const settingsHTML = () => `<h1>Settings</h1><button id="tutorial" class="big">▶ Watch tutorial</button><button id="update" class="big">Check for updates</button><span class="lbl">Theme colour</span>
-  <div class="swatches">${Object.entries(THEMES).map(([n, c]) => `<button data-theme="${c}" class="${c === (data.theme || THEMES.Lime) ? 'on' : ''}"><i style="background:${c}"></i>${n}</button>`).join('')}</div>
-  <input type="range" id="hue" class="hue" min="0" max="360" value="${(data.theme || '').match(/hsl\((\d+)/)?.[1] ?? 75}" aria-label="Theme colour">
+const HUES = { Lime: 75, Orange: 25, Red: 355, Pink: 330, Purple: 265, Blue: 212, Teal: 180, Yellow: 45 };
+const THEMES = Object.fromEntries(Object.entries(HUES).map(([n, h]) => [n, hue(h)]));
+// Each theme keeps its own colour (data.theme for Original, data.gothicTheme for Gothic); Gothic's start as this orange-red,
+// a touch deeper than Original's so it sits right on black and bone.
+const GOTHIC = 'hsl(16 100% 54%)';
+const colourKey = () => data.look === 'gothic' ? 'gothicTheme' : 'theme';
+const tone = h => data.look === 'gothic' ? `hsl(${h} 100% 54%)` : hue(h);
+const accent = () => data[colourKey()] || (data.look === 'gothic' ? GOTHIC : THEMES.Lime);
+// Two-tone: a second colour (data.theme2 / data.gothicTheme2; missing = off) that the theme's filled parts fade into.
+const accent2 = () => data[colourKey() + '2'];
+function paintTheme() {
+  const r = document.documentElement.style, a = accent(), b = accent2();
+  r.setProperty('--accent', a);
+  for (const [k, v] of [['--accent2', b], ['--grad', b && `linear-gradient(100deg, ${a}, ${b})`], ['--fill', b && `linear-gradient(135deg, ${a}, ${b})`]])
+    if (v) r.setProperty(k, v); else r.removeProperty(k);
+}
+// Colour swatches and a hue slider; attr names the swatch buttons' data- attribute, cur is the colour picked.
+const picker = (attr, id, cur, name) => `<div class="swatches">${Object.entries(HUES).map(([n, h]) => { const c = tone(h); return `<button data-${attr}="${c}" class="${c === cur ? 'on' : ''}"><i style="background:${c}"></i>${n}</button>`; }).join('')}</div>
+  <input type="range" id="${id}" class="hue" min="0" max="360" value="${cur.match(/hsl\((\d+)/)[1]}" aria-label="${name}">`;
+const settingsHTML = () => `<h1>Settings</h1><button id="tutorial" class="big">▶ Watch tutorial</button><button id="update" class="big">Check for updates</button><span class="lbl">Theme</span>
+  <div class="looks">${[['original', 'Original'], ['gothic', 'Gothic']].map(([k, n]) => `<button data-setlook="${k}" class="look-${k}${(data.look || 'original') === k ? ' on' : ''}"><i></i>${n}</button>`).join('')}</div>
+  <span class="lbl">Theme colour</span>
+  ${picker('theme', 'hue', accent(), 'Theme colour')}
+  <label class="toggle"><span>Two-tone</span><input type="checkbox" id="twotone"${accent2() ? ' checked' : ''}></label>
+  ${accent2() ? `<span class="lbl">Second colour</span>${picker('theme2', 'hue2', accent2(), 'Second colour')}` : ''}
   <label class="toggle"><span>Haptics</span><input type="checkbox" id="hapticson"${data.haptics === false ? '' : ' checked'}></label>
   <h1>Rest timer</h1><span class="lbl">Default rest</span>
   <div class="restset"><button class="adj" data-restdef="-15" aria-label="15 seconds less">−</button><b class="tc">${mss(restDefault())}</b>
@@ -719,7 +758,9 @@ document.addEventListener('click', async e => {
       for (const id of histIds) delete data.names[id];
     });
   }
-  else if (ds.theme) edit(() => data.theme = ds.theme);
+  else if (ds.theme) edit(() => data[colourKey()] = ds.theme);
+  else if (ds.theme2) edit(() => data[colourKey() + '2'] = ds.theme2);
+  else if (ds.setlook) edit(() => data.look = ds.setlook);
   else if (b.id === 'go') startStop();
   else if (b.id === 'minus') adjust(-15);
   else if (b.id === 'plus') adjust(15);
@@ -832,10 +873,10 @@ document.addEventListener('click', async e => {
 
 // Sets save on every keypress (not re-rendered) so nothing is lost if the phone locks mid-typing.
 document.addEventListener('input', e => {
-  if (e.target.id === 'hue') {
-    data.theme = hue(e.target.value); save();
-    document.documentElement.style.setProperty('--accent', data.theme);
-    document.querySelectorAll('[data-theme]').forEach(b => b.classList.toggle('on', b.dataset.theme === data.theme));
+  if (e.target.id === 'hue' || e.target.id === 'hue2') {
+    const two = e.target.id === 'hue2', k = two ? 'theme2' : 'theme';
+    data[colourKey() + (two ? '2' : '')] = tone(e.target.value); save(); paintTheme();
+    document.querySelectorAll(`[data-${k}]`).forEach(b => b.classList.toggle('on', b.dataset[k] === (two ? accent2() : accent())));
     return;
   }
   if (e.target.id === 'libq') {
@@ -882,6 +923,7 @@ document.addEventListener('change', e => {
   else if (t.id === 'import') importData(t.files[0]);
   else if (t.id === 'beepon') { data.beep = t.checked; save(); }
   else if (t.id === 'hapticson') { data.haptics = t.checked; save(); haptic(); }
+  else if (t.id === 'twotone') edit(() => { if (t.checked) data[colourKey() + '2'] = tone((+accent().match(/hsl\((\d+)/)[1] + 60) % 360); else delete data[colourKey() + '2']; }); // starts a little round the colour wheel from the first
 });
 
 document.addEventListener('mousedown', e => { if (e.target.closest('.unitbox button')) e.preventDefault(); }); // tapping kg/lbs keeps the keyboard up

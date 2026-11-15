@@ -12,19 +12,8 @@ let renderer, scene, camera, mat, body, key = '', yaw = 0.5, drag = null, runnin
 function setup() {
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  scene = new THREE.Scene();
+  scene = light(new THREE.Scene());
   camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
-  // Studio light: soft fill, a white key from high in front (centred, so both sides light the same; from above so
-  // muscles cast soft shadows underneath), and bright rims from behind.
-  scene.add(new THREE.HemisphereLight(0xdcebe0, 0x0a100c, 1.1));
-  const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
-  keyLight.position.set(0, 5, 2.5);
-  scene.add(keyLight);
-  for (const x of [-3, 3]) {
-    const rim = new THREE.DirectionalLight(0xd4ecdc, 2.6);
-    rim.position.set(x, 2, -3);
-    scene.add(rim);
-  }
   mat = new THREE.MeshStandardMaterial({ color: 0x3f7fd6, roughness: 0.6, metalness: 0 });
 
   const c = renderer.domElement;
@@ -32,6 +21,21 @@ function setup() {
   c.addEventListener('pointerdown', e => { drag = e.clientX; c.setPointerCapture(e.pointerId); });
   c.addEventListener('pointermove', e => { if (drag !== null) { yaw += (e.clientX - drag) * 0.012; drag = e.clientX; } });
   for (const t of ['pointerup', 'pointercancel']) c.addEventListener(t, () => drag = null);
+}
+
+// Studio light: soft fill, a white key from high in front (centred, so both sides light the same; from above so
+// muscles cast soft shadows underneath), and bright rims from behind.
+function light(s) {
+  s.add(new THREE.HemisphereLight(0xdcebe0, 0x0a100c, 1.1));
+  const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+  keyLight.position.set(0, 5, 2.5);
+  s.add(keyLight);
+  for (const x of [-3, 3]) {
+    const rim = new THREE.DirectionalLight(0xd4ecdc, 2.6);
+    rim.position.set(x, 2, -3);
+    s.add(rim);
+  }
+  return s;
 }
 
 // BMI along the blend from thin (-1) to average (0) to heavy (+1), measured from the mesh's volume by Anny.
@@ -166,9 +170,10 @@ async function loadMuscles() {
 }
 
 // Dark muscles, faint theme colour for the session's, full and glowing for the picked exercise's. Bones a little paler.
-const BASE = new THREE.Color('#34403a'), BONE = new THREE.Color('#59615a'), PALE = new THREE.Color('#7d877f');
-function paint(on, hot) {
-  const v = getComputedStyle(document.documentElement).getPropertyValue('--accent').match(/[\d.]+/g) || [75, 100, 60];
+// Muscle, bone and tendon colours come from the theme's --m3d.
+function paint(on, hot, shine = 0.9) {
+  const css = getComputedStyle(document.documentElement), v = css.getPropertyValue('--accent').match(/[\d.]+/g) || [75, 100, 60];
+  const [BASE, BONE, PALE] = css.getPropertyValue('--m3d').trim().split(/\s+/).map(c => new THREE.Color(c));
   const lit = new THREE.Color(`hsl(${v[0]}, ${v[1]}%, ${v[2]}%)`), faint = BASE.clone().lerp(lit, 0.2);
   const look = [BASE, ...MUSCLE_IDS.map(k => hot.has(k) ? lit : on.has(k) ? faint : BASE), BONE];
   const col = mbody.geometry.attributes.color, glow = mbody.geometry.attributes.glow, c = new THREE.Color();
@@ -178,7 +183,7 @@ function paint(on, hot) {
     if (!hotty) c.lerp(PALE, (shade[i * 2 + 1] / 255) ** 4 * 0.6); // tendons and fascia show paler, as in the model
     c.multiplyScalar(0.45 + 0.55 * shade[i * 2] / 255); // the model's baked shading, so crevices read
     col.setXYZ(i, c.r, c.g, c.b);
-    glow.array[i] = hotty ? 0.9 : 0;
+    glow.array[i] = hotty ? shine : 0;
   }
   col.needsUpdate = glow.needsUpdate = true;
 }
@@ -195,9 +200,50 @@ export async function muscles(el, on, hot) {
   renderer.setSize(el.clientWidth, M3D);
   camera.aspect = el.clientWidth / M3D;
   // Whole figure, a little room around it: tall enough for its height, wide enough for outstretched arms as it spins.
-  const fit = Math.max(mH * 0.55, mR * 1.1 / camera.aspect);
-  camera.position.set(0, mH / 2, fit / Math.tan(Math.PI / 12) + mR);
-  camera.lookAt(0, mH / 2, 0);
+  // A theme can shrink the figure (--m3d-zoom) and stand its feet a fraction up from the bottom (--m3d-floor), e.g. on
+  // Gothic's plinth, clear of its arch.
+  const css = getComputedStyle(document.documentElement), zoom = +css.getPropertyValue('--m3d-zoom') || 1, floor = +css.getPropertyValue('--m3d-floor');
+  const fit = Math.max(mH * 0.55, mR * 1.1 / camera.aspect) / zoom, y = floor ? fit * (1 - 2 * floor) : mH / 2; // fit = half the height in view
+  camera.position.set(0, y, fit / Math.tan(Math.PI / 12) + mR);
+  camera.lookAt(0, y, 0);
   camera.updateProjectionMatrix();
   if (!running) { running = true; requestAnimationFrame(loop); }
+}
+
+// Plan's muscle icons: the muscle model zoomed in on each muscle, lit up, as image URLs by muscle id. Drawn once
+// per colour scheme on a throwaway renderer, so Today's live model is left alone.
+const BEHIND = new Set(['triceps', 'traps', 'lats', 'upperback', 'lowerback', 'glutes', 'hamstrings', 'calves']);
+const ONE_ARM = new Set(['biceps', 'triceps', 'forearms']);
+export async function icons(px = 132) {
+  await (mloading ||= loadMuscles());
+  const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  r.setSize(px, px, false);
+  const s = light(new THREE.Scene()), cam = new THREE.OrthographicCamera(), out = {};
+  const prev = mbody.parent, spin = mbody.rotation.y, pos = mbody.geometry.attributes.position.array;
+  cam.position.set(0, 0, 5);
+  s.add(mbody);
+  MUSCLE_IDS.forEach((m, k) => {
+    const flip = BEHIND.has(m) ? -1 : 1; // turned round, x on screen is the model's -x
+    const xs = [], ys = [];
+    for (let i = 0; i < groupOf.length; i++) {
+      if (groupOf[i] !== k + 1) continue;
+      const x = pos[i * 3] * flip;
+      if (ONE_ARM.has(m) && x > 0) continue; // just the arm on the left of the picture
+      xs.push(x); ys.push(pos[i * 3 + 1]);
+    }
+    // Frame the bulk of the muscle: the outermost 3% each way are stray tendon tips that would pull it off-centre.
+    const cut = a => { a.sort((p, q) => p - q); return [a[Math.floor(a.length * 0.03)], a[Math.floor(a.length * 0.97)]]; };
+    const [x0, x1] = cut(xs), [y0, y1] = cut(ys);
+    const cx = (x0 + x1) / 2e4, cy = (y0 + y1) / 2e4, h = Math.max(x1 - x0, y1 - y0) / 2e4 * 1.3; // a little body round it
+    Object.assign(cam, { left: cx - h, right: cx + h, top: cy + h, bottom: cy - h, near: 0.1, far: 20 });
+    cam.updateProjectionMatrix();
+    mbody.rotation.y = flip < 0 ? Math.PI : 0;
+    paint(new Set(), new Set([m]), 0.25); // less glow than Today's, so the muscle's shape reads at this size
+    r.render(s, cam);
+    out[m] = r.domElement.toDataURL();
+  });
+  mbody.rotation.y = spin;
+  if (prev) prev.add(mbody); else s.remove(mbody);
+  r.dispose(); r.forceContextLoss();
+  return out;
 }
